@@ -109,28 +109,3 @@ int main( int argc, char* args[] ) {
 
   return 0;
 }
-
-/*
-
-Appropriate System Scale:
-
-Map is given by X*Y (256x256)
-
-We spawn 100 particles per round.
-
-Every round, there is a uniform probability of spawning at any location.
-P = 1/(XY)
-
-What does 0 mean? -> Water absolutely never gets there
-What does 1 mean? -> Water always crosses there?
-
-But after how long do we consider the water evaporated?
-
-And how much does it contribute?
-
-PATH = PATHOLD*DECAY + (1-DECAY)*PARTICLE?
-for all path. This is expensive though lol to do for every guy all the time.
-
-
-
-*/

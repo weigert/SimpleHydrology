@@ -1,9 +1,15 @@
 //FLOW PARTICLE
 
-struct Particle{
+struct Drop{
   //Construct Particle at Position
-  Particle(glm::vec2 _pos){ pos = _pos; }
+  Drop(glm::vec2 _pos){ pos = _pos; }
+  Drop(glm::vec2 _p, double v){
+    pos = _p;
+    int index = _p.x*256+_p.y;
+    volume = v;
+  }
 
+  int index;
   glm::vec2 pos;
   glm::vec2 speed = glm::vec2(0.0);
 
@@ -17,9 +23,11 @@ struct Particle{
   const float depositionRate = 0.1;
   const float minVol = 0.01;
   const float friction = 0.05;
+  const float volumeFactor = 100.0;
 
   //Sedimenation Process
-  void process(double& h, double scale);
+  void process(double* h, double* path, double* pool, glm::vec2 dim, double scale);
+  void flood(double* h, double* pool);
 };
 
 glm::vec3 surfaceNormal(int index, double* h, double scale){
@@ -36,71 +44,166 @@ glm::vec3 surfaceNormal(int index, double* h, double scale){
   return n;
 }
 
-void Particle::process(double& h, double scale){
-  /*
+void Drop::process(double* h, double* p, double* b, glm::vec2 dim, double scale){
 
   glm::ivec2 ipos;
+  bool path[256*256] = {false};
 
-  //Descend with Sedimentation
   while(volume > minVol){
 
+    //Initial Position
     ipos = pos;
+    int ind = ipos.x*256+ipos.y;
 
-    glm::vec3 n = surfaceNormal(ipos.x, ipos.y, h, scale);  //Surface Normal at Position
-    //Compute Effective Parameter Set
-    float effD = depositionRate;//*(1.0+waterpath[(int)(ipos.x*dim.y+ipos.y)]);
-    float effF = friction;//*(1.0-waterpath[(int)(ipos.x*dim.y+ipos.y)]);
-    float effR = evapRate;//*(1.0-waterpath[(int)(ipos.x*dim.y+ipos.y)]);
+    //Add to Path
+    path[ind] = true;
 
-    //Accelerate particle using newtonian mechanics using the surface normal.
-    glm::vec2 acc = glm::vec2(n.x, n.z)/(drop.volume*density);
-    drop.speed += dt*acc;//F = ma, so a = F/m
-    drop.pos   += dt*drop.speed;
-    drop.speed *= (1.0-dt*effF);       //Friction Factor
+    glm::vec3 n = surfaceNormal(ind, h, scale);
 
-    //Check if the Particle is Stopped
-    if(length(acc) < 0.01 && length(drop.speed) < 0.01){
-      //Add the Drop Volume to the Pool
-      _pool.push_back(Drop(ipos, dt*drop.volume));
+    //Effective Parameters
+    float effD = depositionRate;
+    float effF = friction;
+    float effR = evapRate;
+
+    //Newtonian Mechanics
+    glm::vec2 acc = glm::vec2(n.x, n.z)/(volume*density);
+    speed += dt*acc;
+    pos   += dt*speed;
+    speed *= (1.0-dt*effF);
+
+    //New Position
+    int nind = (int)(pos.x)*256+(int)(pos.y);
+
+    //Out-Of-Bounds
+    if(!glm::all(glm::greaterThanEqual(pos, glm::vec2(0))) ||
+       !glm::all(glm::lessThan(pos, dim))){
+         volume = 0.0;
+         break;
+       }
+
+    //Stopped Particle
+    if(length(acc) < 0.001 && length(speed) < 0.001)
+      break;
+
+    //Particle in Pool
+    if(b[ind] != 0.0)
+      break;
+
+    //Mass-Transfer
+    float c_eq = volume*glm::length(speed)*(h[ind]-h[nind]);
+    if(c_eq < 0.0) c_eq = 0.0;
+    float cdiff = c_eq - sediment;
+    sediment += dt*effD*cdiff;
+    h[ind] -= dt*volume*effD*cdiff;
+
+    //Evaporate
+    volume *= (1.0-dt*effR);
+  }
+
+  //Update Path
+  float lrate = 0.01;
+  for(int i = 0; i < 256*256; i++)
+    if(path[i]) p[i] = (1.0-lrate)*p[i] + lrate;
+    else p[i] *= (1.0-lrate*0.01);
+};
+
+/*
+  A point that is below the testing plane is part of the fill.
+  A point that is ALSO below the initial plane is a drainage spot.
+
+  If we find a drainage spot:
+    Don't add it to the set, don't test it's neighbors.
+    It is now marked as "tested". This way we don't flood beyond this spot.
+    Mark it as a drainage spot.
+    Continue filling the other areas into the set.
+
+  Once all drains are identified:
+
+  If we still have more particle volume than the test-volume:
+    Set the plane to the height of the lowest drain.
+    Compute the volume that can be added to the set, subtract it.
+    Place the rest as particles at the location of the drain.
+*/
+
+void Drop::flood(double* h, double* p){
+
+  //Current Height
+  index = (int)pos.x*256 + (int)pos.y;
+  double plane = h[index] + p[index];
+  double initialplane = plane;
+
+  float tol = 0.001;
+  int fail = 10;
+  std::vector<int> set; //Floodset
+
+  //Iterate
+  while(volume > minVol && fail){
+    set.clear();
+    bool tried[256*256] = {false};
+
+    std::function<void(int)> fill = [&](int i){
+
+      int x = i/256;
+      int y = i%256;
+
+      //Out of Bounds
+      if(x >= 256 || x < 0) return;
+      if(y >= 256 || y < 0) return;
+
+      if(tried[i]) return;  //Position has been tried
+      if(plane < h[i] + p[i]) return;  //Plane is lower
+
+      /*
+        If we find a drain, place ourselves there and
+        get out of this function!
+      */
+
+      set.push_back(i);
+      tried[i] = true;
+
+      //Fill Neighbors
+      fill(i+256);
+      fill(i-256);
+      fill(i+1);
+      fill(i-1);
+    };
+
+    //Perform Flood
+    fill(index);
+
+    if(set.empty()){
+      fail = true;
       break;
     }
 
-    //Check if the Particle enters a pool, add it to the pool!
+    //Iterate over the Set
+    double tVol = 0.0;  //Get the total volume of the guy
 
+    for(auto& s: set)
+      tVol += volumeFactor*(plane - (h[s]+p[s]));
 
-    //Check if Particle is still in-bounds
-    if(!glm::all(glm::greaterThanEqual(drop.pos, glm::vec2(0))) ||
-       !glm::all(glm::lessThan(drop.pos, dim))) break;
+    //Succesful Fill
+    if(tVol <= volume){
 
-   //Add the Particles Position to the Heatmap!
-   //_path[(int)(ipos.x*dim.y+ipos.y)] = 1;
+      //Set Volume to Plane Height
+      for(auto& s: set)
+        p[s] = plane - h[s];
 
-    //Compute sediment capacity difference
-    float c_eq = drop.volume*glm::length(drop.speed)*(h[ipos.x][ipos.y]-heightmap[drop.pos.x][drop.pos.y]);
-    if(c_eq < 0.0) c_eq = 0.0;
-    float cdiff = c_eq - drop.sediment;
+      //Adjust Volume
+      volume -= tVol;
+      tVol = 0.0;
+    }
+    else fail--;
 
-    //Act on the Heightmap and Droplet!
-    drop.sediment += dt*effD*cdiff;
-    heightmap[ipos.x][ipos.y] -= dt*drop.volume*effD*cdiff;
-
-    //Evaporate the Droplet (Note: Proportional to Volume! Better: Use shape factor to make proportional to the area instead.)
-    drop.volume *= (1.0-dt*effR);
+    //Nudge the Plane (0.5 for smoother approach)
+    plane += 0.5*(volume-tVol)/(float)set.size()/volumeFactor;
   }
-  */
-};
+  if(fail == 0)
+    volume = 0.0;
 
-//POOL PARTICLE
-
-struct Drop{
-  Drop(glm::vec2 _p, double v){
-    pos = _p;
-    int index = _p.x*256+_p.y;
-    volume = v;
+  //Update Pool
+  for(int i = 0; i < 256*256; i++){
+    p[i] -= 0.1 * evapRate / volumeFactor;
+    if(p[i] < 0.0) p[i] = 0.0;
   }
-  glm::ivec2 pos;
-  int index;
-  double volume;
-};
-
-//These will be unified later.
+}
