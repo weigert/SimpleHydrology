@@ -23,8 +23,8 @@ int main( int argc, char* args[] ) {
   //Setup 2D Images
   Billboard path(256, 256, false); //Render target for automata
   Billboard pool(256, 256, false); //Render target for automata
-  path.raw(image::make<float>(glm::vec2(256, 256), world.waterpath, pathColor));
-  pool.raw(image::make<float>(glm::vec2(256, 256), world.waterpool, poolColor));
+  path.raw(image::make<double>(glm::vec2(256, 256), world.waterpath, pathColor));
+  pool.raw(image::make<double>(glm::vec2(256, 256), world.waterpool, poolColor));
 
   //Setup World Model
   Model model(constructor);
@@ -102,8 +102,8 @@ int main( int argc, char* args[] ) {
       model.construct(constructor); //Reconstruct Updated Model
 
       //Redraw the Path and Death Image
-      path.raw(image::make<float>(glm::vec2(256, 256), world.waterpath, pathColor));
-      pool.raw(image::make<float>(glm::vec2(256, 256), world.waterpool, poolColor));
+      path.raw(image::make<double>(glm::vec2(256, 256), world.waterpath, pathColor));
+      pool.raw(image::make<double>(glm::vec2(256, 256), world.waterpool, poolColor));
     }
   });
 

@@ -1,3 +1,5 @@
+#include "water.h"
+
 class World{
 public:
   //Constructor
@@ -15,8 +17,8 @@ public:
 
   //Hydraulic Maps
   double frequencyweight = 4000.0; //Weight of frequency...
-  float waterpath[256*256] = {0};
-  float waterpool[256*256] = {0};
+  double waterpath[256*256] = {0.0};
+  double waterpool[256*256] = {0.0};
   double sealevel = 16.0;
 
   //Erosion Steps
@@ -25,23 +27,12 @@ public:
   int erosionstep = 1000;
 
   //Particle Properties
-  float dt = 1.4;
+  float dt = 1.2;
   float density = 1.0;  //This gives varying amounts of inertia and stuff...
-  float evapRate = 0.01;
-  float depositionRate = 0.01;
+  float evapRate = 0.001;
+  float depositionRate = 0.1;
   float minVol = 0.01;
   float friction = 0.05;
-};
-
-struct Particle{
-  //Construct Particle at Position
-  Particle(glm::vec2 _pos){ pos = _pos; }
-
-  glm::vec2 pos;
-  glm::vec2 speed = glm::vec2(0.0);
-
-  float volume = 1.0;   //This will vary in time
-  float sediment = 0.0; //Fraction of Volume that is Sediment!
 };
 
 /*
@@ -62,18 +53,10 @@ void World::generate(){
   //Initialize Heightmap
   noise::module::Perlin perlin;
 
-  //Less Mountainy
-  perlin.SetOctaveCount(8);
-  perlin.SetFrequency(1.0);
-  perlin.SetPersistence(0.4);
-
-  /*
   //Mountainy:
   perlin.SetOctaveCount(8);
   perlin.SetFrequency(1.0);
-  perlin.SetPersistence(0.4);
-
-  */
+  perlin.SetPersistence(0.6);
 
   float min, max = 0.0;
   for(int i = 0; i < dim.x; i++){
@@ -103,11 +86,6 @@ void World::generate(){
 */
 
 glm::vec3 World::surfaceNormal(int i, int j){
-  /*
-    Note: Surface normal is computed in this way, because the square-grid surface is meshed using triangles.
-    To avoid spatial artifacts, you need to weight properly with all neighbors.
-  */
-
   glm::vec3 n = glm::vec3(0.15) * glm::normalize(glm::vec3(scale*(heightmap[i][j]-heightmap[i+1][j]), 1.0, 0.0));  //Positive X
   n += glm::vec3(0.15) * glm::normalize(glm::vec3(scale*(heightmap[i-1][j]-heightmap[i][j]), 1.0, 0.0));  //Negative X
   n += glm::vec3(0.15) * glm::normalize(glm::vec3(0.0, 1.0, scale*(heightmap[i][j]-heightmap[i][j+1])));    //Positive Y
@@ -118,7 +96,6 @@ glm::vec3 World::surfaceNormal(int i, int j){
   n += glm::vec3(0.1) * glm::normalize(glm::vec3(scale*(heightmap[i][j]-heightmap[i+1][j-1])/sqrt(2), sqrt(2), scale*(heightmap[i][j]-heightmap[i+1][j-1])/sqrt(2)));    //Positive Y
   n += glm::vec3(0.1) * glm::normalize(glm::vec3(scale*(heightmap[i][j]-heightmap[i-1][j+1])/sqrt(2), sqrt(2), scale*(heightmap[i][j]-heightmap[i-1][j+1])/sqrt(2)));    //Positive Y
   n += glm::vec3(0.1) * glm::normalize(glm::vec3(scale*(heightmap[i][j]-heightmap[i-1][j-1])/sqrt(2), sqrt(2), scale*(heightmap[i][j]-heightmap[i-1][j-1])/sqrt(2)));    //Positive Y
-
   return n;
 }
 
@@ -129,8 +106,8 @@ void World::erode(int cycles){
   */
 
   //Particle Paths
-  int _path[256*256] = {0};
-  float _pool[256*256] = {0};
+//  int _path[256*256] = {0};
+  std::vector<Drop> _pool;
 
   //Do a series of iterations!
   for(int i = 0; i < cycles; i++){
@@ -146,8 +123,9 @@ void World::erode(int cycles){
       //Get Position and Surface Normal
       ipos = drop.pos; //Floored Droplet Initial Position
       glm::vec3 n = surfaceNormal(ipos.x, ipos.y);  //Surface Normal at Position
+
       //Compute Effective Parameter Set
-      float effD = depositionRate*(1.0+waterpath[(int)(ipos.x*dim.y+ipos.y)]);
+      float effD = depositionRate;//*(1.0+waterpath[(int)(ipos.x*dim.y+ipos.y)]);
       float effF = friction;//*(1.0-waterpath[(int)(ipos.x*dim.y+ipos.y)]);
       float effR = evapRate;//*(1.0-waterpath[(int)(ipos.x*dim.y+ipos.y)]);
 
@@ -160,22 +138,23 @@ void World::erode(int cycles){
       //Check if the Particle is Stopped
       if(length(acc) < 0.01 && length(drop.speed) < 0.01){
         //Add the Drop Volume to the Pool
-        _pool[(int)(ipos.x*dim.y+ipos.y)] += dt*drop.volume;
+        _pool.push_back(Drop(ipos, dt*drop.volume));
         break;
       }
 
       //Check if the Particle enters a pool, add it to the pool!
+      /*
       if(waterpool[(int)(ipos.x*dim.y+ipos.y)] != 0.0){
         _pool[(int)(ipos.x*dim.y+ipos.y)] += dt*drop.volume;
         break;
-      }
+      }*/
 
       //Check if Particle is still in-bounds
       if(!glm::all(glm::greaterThanEqual(drop.pos, glm::vec2(0))) ||
          !glm::all(glm::lessThan(drop.pos, dim))) break;
 
      //Add the Particles Position to the Heatmap!
-     _path[(int)(ipos.x*dim.y+ipos.y)] = 1;
+    // _path[(int)(ipos.x*dim.y+ipos.y)] = 1;
 
       //Compute sediment capacity difference
       float c_eq = drop.volume*glm::length(drop.speed)*(heightmap[ipos.x][ipos.y]-heightmap[(int)drop.pos.x][(int)drop.pos.y]);
@@ -191,38 +170,57 @@ void World::erode(int cycles){
     }
   }
 
+/*
   float lrate = 0.01;
   for(int i = 0; i < 256*256; i++){
     //What is the maximum number of times a square can be visited? A bunch I guess.
     waterpath[i] = (1.0-lrate)*waterpath[i]+lrate*_path[i];
   }
+  */
 
   /*
   FLOODING ALGORITHM
   */
 
-  for(int i = 0; i < 256*256; i++){
-    if(_pool[i] == 0.0) continue; //No volume to deposit
+/*
+  for(auto &p: _pool){
+
+    //Current Height
+    double plane = heightmap[p.pos.x][p.pos.y] + waterpool[p.index];
+
     float tol = 0.001;
-
-    //The plane starts at the height of position + droplet volume
-    float plane0 = heightmap[i/256][i%256] + waterpool[i];  //Initial Plane!
-    float plane = plane0; //Testing Plane!
-
-    //Set of connected points
+    int maxiter = 50;
     std::vector<int> _set;      //Part of the Set
-    std::vector<int> _drains;   //Drainage Spots
 
-    bool complete = false;
-    int maxtries = 100;
-    while(maxtries > 0){
+    //Descend this particle until it is in a local minimum.
+    std::function<glm::ivec2(glm::ivec2)> descend = [&](glm::ivec2 pos){
 
+      glm::ivec2 l = pos;
+
+      //Get the Position of all neighbors
+      glm::ivec2 a = pos + glm::ivec2( 1, 0);
+      glm::ivec2 b = pos + glm::ivec2(-1, 0);
+      glm::ivec2 c = pos + glm::ivec2( 0, 1);
+      glm::ivec2 d = pos + glm::ivec2( 0,-1);
+
+      //Find the neighbors with the lowest height
+      if(heightmap[a.x][a.y] < heightmap[l.x][l.y]) l = a;
+      if(heightmap[b.x][b.y] < heightmap[l.x][l.y]) l = b;
+      if(heightmap[c.x][c.y] < heightmap[l.x][l.y]) l = c;
+      if(heightmap[d.x][d.y] < heightmap[l.x][l.y]) l = d;
+
+      //If l == pos, we have found the lowest spot.
+      if(glm::all(glm::equal(pos, l))) return l;
+      else return descend(l);
+    };
+
+    //Descend the Particle
+    p.pos = descend(p.pos);
+
+    while(p.volume > 0.0 && maxiter > 0){
       _set.clear();
-      _drains.clear();
-
       bool tried[256*256] = {false};
 
-      //Fill Operation: Identify all positions that are connected and fulfill a criterion
       std::function<void(int,int)> fill = [&](int x, int y){
         //Out of Bounds
         if(x >= 256 || x < 0) return;
@@ -233,18 +231,8 @@ void World::erode(int cycles){
         if(tried[ind]) return;  //Position has been tried
         if(plane < heightmap[x][y] + waterpool[ind]) return;  //Plane is lower
 
-        tried[ind] = true;
-
-        //Check for drains
-        /*
-        if(plane0 > heightmap[x][y] + waterpool[ind]){
-          _drains.push_back(ind);
-          return;
-        }
-        */
-
-        //Add to Set!
         _set.push_back(ind);
+        tried[ind] = true;
 
         //Fill Neighbors
         fill(x+1, y);
@@ -253,49 +241,96 @@ void World::erode(int cycles){
         fill(x, y-1);
       };
 
-      //We need to
+      //Iterate over the Set
+      double tVol = 0.0;  //Get the total volume of the guy
+      for(auto& s: s){
+        tVol += plane - (heightmap[s/256][s%256]+waterpool[s]);
+      }
 
-      //Fill the Set
+      //Add the part of the volume under the plane!
+      if(tVol < p.vol){
+        for(auto& s: s){
+          waterpool[s] = plane - heightmap[s/256][s%256];
+        }
+        p.vol -= tVol; //Subtract it
+        tVol = 0.0;
+      }
+
+      //Nudge the Plane
+      plane += 0.1*(p.vol-tVol)/(float)_set.size();
+
+      maxiter--;
+    }
+
+    //I don't want to be moving planes around.
+    //Or I guess I do, but only for the one particle guy.
+    //That's kind of what I do now anyway, because I move it piecewise
+
+    //If the set is empty, that implies that the thing is on an incline or some shit
+    //or not directly in a pit that it can fill. So spawn a particle?
+  }
+*/
+/*
+     //No volume to deposit
+
+
+
+    //Distribute the Liquid
+    while(_pool[i] > 0.0 && maxiter > 0){
+
+      _set.clear();
+      _drains.clear();
+
+      bool tried[256*256] = {false};
+
+      //Fill Operation: Identify all positions that are connected and fulfill a criterion
+
+
+      //Fill the Set, Identify Drains
       fill(i/256, i%256);
-      if(_set.empty()) break; //If we e.g. lower the plane, because we are on an edge.
-      float pVol = 0.0;  //Particle Volume in Set
-      float tVol = 0.0;  //Total Volume in Set
 
-      std::cout<<_set.size()<<std::endl;
-
-      //Compute over Plane
+      float pVol = 0.0;  //Particle Volume to Plane
+      float tVol = 0.0;  //Total Volume under Plane
       for(auto& ind: _set){
-        pVol += 0.01*_pool[ind]; //Particle Volume under Plane
+        pVol += 0.01*_pool[ind];
         tVol += plane - (heightmap[ind/256][ind%256] + waterpool[ind]);
       }
 
-      //
+      //If we can fill some of the volume
+      if(tVol < pVol){
 
-/*
-      std::cout<<"SET: "<<_set.size()<<std::endl;
-      std::cout<<"F: "<<plane<<std::endl;
-      std::cout<<"H: "<<heightmap[i/256][i%256]+waterpool[i]<<std::endl;
-      std::cout<<"P: "<<pVol<<std::endl;
-      std::cout<<"T: "<<tVol<<std::endl;
-*/
+        pVol -= tVol; //Subtract filled volume from total particle volume
 
-      if(abs(pVol - tVol) < tol){
-        for(auto& ind: _set){ //Raise water level
-          _pool[ind] = 0.0; //Particle Volume under Plane
-          waterpool[ind] = (plane - heightmap[ind/256][ind%256]);
+        for(auto& ind: _set){
+          //Set the new Waterlevel at ALL points
+//          waterpool[ind] = plane - heightmap[ind/256][ind%256];
+
+          //Remove placed water at all points where there was water to add.
+          if(_pool[ind] != 0.0){
+            if(_pool[ind] > tVol){
+              _pool[ind] -= tVol;
+              tVol = 0.0;
+            }
+            else{
+              tVol -= _pool[ind];
+              _pool[ind] = 0.0;
+            }
+          }
         }
-        break;  //Finished
       }
 
-      //Move the Plane Upwards
+      //Move the Testing Plane by raising it by the remaining volume divided by set area
       plane += 0.1*(pVol-tVol)/(float)_set.size();
 
-      if(--maxtries == 0)
-        std::cout<<"Failed number of tries"<<std::endl;
+      //If our plane is below the testing plane, get outta here
+      if(plane < plane0) break;
+
+      maxiter--;
     }
   }
-}
+  */
 
+}
 /*
   A point that is below the testing plane is part of the fill.
   A point that is ALSO below the initial plane is a drainage spot.
@@ -337,10 +372,10 @@ glm::mat4 projection = glm::ortho(-(float)WIDTH*zoom, (float)WIDTH*zoom, -(float
 
 //Shader Stuff
 float steepness = 0.8;
-//glm::vec3 flatColor = glm::vec3(0.27, 0.64, 0.27);
-//glm::vec3 steepColor = glm::vec3(0.7);
-glm::vec3 flatColor = glm::vec3(1.0, 0.709, 0.329);
-glm::vec3 steepColor = glm::vec3(0.847, 0.714, 0.592);
+glm::vec3 flatColor = glm::vec3(0.27, 0.64, 0.27);
+glm::vec3 steepColor = glm::vec3(0.7);
+//glm::vec3 flatColor = glm::vec3(1.0, 0.709, 0.329);
+//glm::vec3 steepColor = glm::vec3(0.847, 0.714, 0.592);
 glm::vec3 waterColor = glm::vec3(0.086, 0.435, 0.494);
 
 //Lighting and Shading
@@ -511,10 +546,10 @@ std::function<void()> eventHandler = [&](){
   }
 };
 
-std::function<glm::vec4(float)> pathColor = [](float t){
+std::function<glm::vec4(double)> pathColor = [](double t){
   return glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(0.8, 0.0, 0.0, 1.0), ease::sharpen(t, 2));
 };
 
-std::function<glm::vec4(float)> poolColor = [](float t){
+std::function<glm::vec4(double)> poolColor = [](double t){
   return glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(1.0, 1.0, 1.0, 1.0), (t > 0.0)?1.0:0.0);
 };
