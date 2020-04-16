@@ -22,25 +22,17 @@ struct Particle{
   void process(double& h, double scale);
 };
 
-
-glm::vec3 normal(int i, int j, double* h, glm::vec2 dim, double scale){
-  /*
-    Note: Surface normal is computed in this way, because the square-grid surface is meshed using triangles.
-    To avoid spatial artifacts, you need to weight properly with all neighbors.
-  */
-  glm::vec3 n = glm::vec3(0.0);
-/*
-  glm::vec3 n = glm::vec3(0.15) * glm::normalize(glm::vec3(scale*(heightmap[i][j]-heightmap[i+1][j]), 1.0, 0.0));  //Positive X
-  n += glm::vec3(0.15) * glm::normalize(glm::vec3(scale*(heightmap[i-1][j]-heightmap[i][j]), 1.0, 0.0));  //Negative X
-  n += glm::vec3(0.15) * glm::normalize(glm::vec3(0.0, 1.0, scale*(heightmap[i][j]-heightmap[i][j+1])));    //Positive Y
-  n += glm::vec3(0.15) * glm::normalize(glm::vec3(0.0, 1.0, scale*(heightmap[i][j-1]-heightmap[i][j])));  //Negative Y
+glm::vec3 surfaceNormal(int index, double* h, double scale){
+  glm::vec3 n = glm::vec3(0.15) * glm::normalize(glm::vec3(scale*(h[index]-h[index+256]), 1.0, 0.0));  //Positive X
+  n += glm::vec3(0.15) * glm::normalize(glm::vec3(scale*(h[index-256]-h[index]), 1.0, 0.0));  //Negative X
+  n += glm::vec3(0.15) * glm::normalize(glm::vec3(0.0, 1.0, scale*(h[index]-h[index+1])));    //Positive Y
+  n += glm::vec3(0.15) * glm::normalize(glm::vec3(0.0, 1.0, scale*(h[index-1]-h[index])));  //Negative Y
 
   //Diagonals! (This removes the last spatial artifacts)
-  n += glm::vec3(0.1) * glm::normalize(glm::vec3(scale*(heightmap[i][j]-heightmap[i+1][j+1])/sqrt(2), sqrt(2), scale*(heightmap[i][j]-heightmap[i+1][j+1])/sqrt(2)));    //Positive Y
-  n += glm::vec3(0.1) * glm::normalize(glm::vec3(scale*(heightmap[i][j]-heightmap[i+1][j-1])/sqrt(2), sqrt(2), scale*(heightmap[i][j]-heightmap[i+1][j-1])/sqrt(2)));    //Positive Y
-  n += glm::vec3(0.1) * glm::normalize(glm::vec3(scale*(heightmap[i][j]-heightmap[i-1][j+1])/sqrt(2), sqrt(2), scale*(heightmap[i][j]-heightmap[i-1][j+1])/sqrt(2)));    //Positive Y
-  n += glm::vec3(0.1) * glm::normalize(glm::vec3(scale*(heightmap[i][j]-heightmap[i-1][j-1])/sqrt(2), sqrt(2), scale*(heightmap[i][j]-heightmap[i-1][j-1])/sqrt(2)));    //Positive Y
-*/
+  n += glm::vec3(0.1) * glm::normalize(glm::vec3(scale*(h[index]-h[index+257])/sqrt(2), sqrt(2), scale*(h[index]-h[index+257])/sqrt(2)));    //Positive Y
+  n += glm::vec3(0.1) * glm::normalize(glm::vec3(scale*(h[index]-h[index+255])/sqrt(2), sqrt(2), scale*(h[index]-h[index+255])/sqrt(2)));    //Positive Y
+  n += glm::vec3(0.1) * glm::normalize(glm::vec3(scale*(h[index]-h[index-255])/sqrt(2), sqrt(2), scale*(h[index]-h[index-255])/sqrt(2)));    //Positive Y
+  n += glm::vec3(0.1) * glm::normalize(glm::vec3(scale*(h[index]-h[index-257])/sqrt(2), sqrt(2), scale*(h[index]-h[index-257])/sqrt(2)));    //Positive Y
   return n;
 }
 

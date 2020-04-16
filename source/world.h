@@ -5,7 +5,6 @@ public:
   //Constructor
   void generate();                        //Initialize Heightmap
   void erode(int cycles);                 //Perform n erosion cycles
-  glm::vec3 surfaceNormal(int i, int j);
 
   int SEED = 10;
   std::chrono::milliseconds tickLength = std::chrono::milliseconds(1000);
@@ -13,7 +12,7 @@ public:
   bool updated = false;                 //Flag for remeshing
 
   double scale = 60.0;                  //"Physical" Height scaling of the map
-  double heightmap[256][256] = {0.0};
+  double heightmap[256*256] = {0.0};    //Flat Array
 
   //Hydraulic Maps
   double frequencyweight = 4000.0; //Weight of frequency...
@@ -59,20 +58,14 @@ void World::generate(){
   perlin.SetPersistence(0.6);
 
   float min, max = 0.0;
-  for(int i = 0; i < dim.x; i++){
-    for(int j = 0; j < dim.y; j++){
-      heightmap[i][j] = perlin.GetValue(i*(1.0/dim.x), j*(1.0/dim.y), SEED);
-      if(heightmap[i][j] > max) max = heightmap[i][j];
-      if(heightmap[i][j] < min) min = heightmap[i][j];
-    }
+  for(int i = 0; i < dim.x*dim.y; i++){
+    heightmap[i] = perlin.GetValue((i/256)*(1.0/dim.x), (i%256)*(1.0/dim.y), SEED);
+    if(heightmap[i] > max) max = heightmap[i];
+    if(heightmap[i] < min) min = heightmap[i];
   }
-
   //Normalize
-  for(int i = 0; i < dim.x; i++){
-    for(int j = 0; j < dim.y; j++){
-      //Normalize to (0, 1) scale.
-      heightmap[i][j] = (heightmap[i][j] - min)/(max - min);
-    }
+  for(int i = 0; i < dim.x*dim.y; i++){
+    heightmap[i] = (heightmap[i] - min)/(max - min);
   }
 
   //Construct all Triangles...
@@ -85,28 +78,11 @@ void World::generate(){
 ===================================================
 */
 
-glm::vec3 World::surfaceNormal(int i, int j){
-  glm::vec3 n = glm::vec3(0.15) * glm::normalize(glm::vec3(scale*(heightmap[i][j]-heightmap[i+1][j]), 1.0, 0.0));  //Positive X
-  n += glm::vec3(0.15) * glm::normalize(glm::vec3(scale*(heightmap[i-1][j]-heightmap[i][j]), 1.0, 0.0));  //Negative X
-  n += glm::vec3(0.15) * glm::normalize(glm::vec3(0.0, 1.0, scale*(heightmap[i][j]-heightmap[i][j+1])));    //Positive Y
-  n += glm::vec3(0.15) * glm::normalize(glm::vec3(0.0, 1.0, scale*(heightmap[i][j-1]-heightmap[i][j])));  //Negative Y
-
-  //Diagonals! (This removes the last spatial artifacts)
-  n += glm::vec3(0.1) * glm::normalize(glm::vec3(scale*(heightmap[i][j]-heightmap[i+1][j+1])/sqrt(2), sqrt(2), scale*(heightmap[i][j]-heightmap[i+1][j+1])/sqrt(2)));    //Positive Y
-  n += glm::vec3(0.1) * glm::normalize(glm::vec3(scale*(heightmap[i][j]-heightmap[i+1][j-1])/sqrt(2), sqrt(2), scale*(heightmap[i][j]-heightmap[i+1][j-1])/sqrt(2)));    //Positive Y
-  n += glm::vec3(0.1) * glm::normalize(glm::vec3(scale*(heightmap[i][j]-heightmap[i-1][j+1])/sqrt(2), sqrt(2), scale*(heightmap[i][j]-heightmap[i-1][j+1])/sqrt(2)));    //Positive Y
-  n += glm::vec3(0.1) * glm::normalize(glm::vec3(scale*(heightmap[i][j]-heightmap[i-1][j-1])/sqrt(2), sqrt(2), scale*(heightmap[i][j]-heightmap[i-1][j-1])/sqrt(2)));    //Positive Y
-  return n;
-}
-
 void World::erode(int cycles){
-
-  /*
-    Note: Everything is properly scaled by a time step-size "dt"
-  */
 
   //Particle Paths
 //  int _path[256*256] = {0};
+
   std::vector<Drop> _pool;
 
   //Do a series of iterations!
@@ -122,7 +98,8 @@ void World::erode(int cycles){
 
       //Get Position and Surface Normal
       ipos = drop.pos; //Floored Droplet Initial Position
-      glm::vec3 n = surfaceNormal(ipos.x, ipos.y);  //Surface Normal at Position
+      int index = ipos.x*dim.y+ipos.y;
+      glm::vec3 n = surfaceNormal(index, heightmap, scale);  //Surface Normal at Position
 
       //Compute Effective Parameter Set
       float effD = depositionRate;//*(1.0+waterpath[(int)(ipos.x*dim.y+ipos.y)]);
@@ -135,19 +112,17 @@ void World::erode(int cycles){
       drop.pos   += dt*drop.speed;
       drop.speed *= (1.0-dt*effF);       //Friction Factor
 
+      //Important: Round Positions?
+      int nindex = (int)(drop.pos.x)*dim.y+(int)(drop.pos.y);
+
       //Check if the Particle is Stopped
+      /*
       if(length(acc) < 0.01 && length(drop.speed) < 0.01){
         //Add the Drop Volume to the Pool
-        _pool.push_back(Drop(ipos, dt*drop.volume));
+      //  _pool.push_back(Drop(ipos, dt*drop.volume));
         break;
       }
-
-      //Check if the Particle enters a pool, add it to the pool!
-      /*
-      if(waterpool[(int)(ipos.x*dim.y+ipos.y)] != 0.0){
-        _pool[(int)(ipos.x*dim.y+ipos.y)] += dt*drop.volume;
-        break;
-      }*/
+      */
 
       //Check if Particle is still in-bounds
       if(!glm::all(glm::greaterThanEqual(drop.pos, glm::vec2(0))) ||
@@ -157,13 +132,13 @@ void World::erode(int cycles){
     // _path[(int)(ipos.x*dim.y+ipos.y)] = 1;
 
       //Compute sediment capacity difference
-      float c_eq = drop.volume*glm::length(drop.speed)*(heightmap[ipos.x][ipos.y]-heightmap[(int)drop.pos.x][(int)drop.pos.y]);
+      float c_eq = drop.volume*glm::length(drop.speed)*(heightmap[index]-heightmap[nindex]);
       if(c_eq < 0.0) c_eq = 0.0;
       float cdiff = c_eq - drop.sediment;
 
       //Act on the Heightmap and Droplet!
       drop.sediment += dt*effD*cdiff;
-      heightmap[ipos.x][ipos.y] -= dt*drop.volume*effD*cdiff;
+      heightmap[index] -= dt*drop.volume*effD*cdiff;
 
       //Evaporate the Droplet (Note: Proportional to Volume! Better: Use shape factor to make proportional to the area instead.)
       drop.volume *= (1.0-dt*effR);
@@ -407,24 +382,27 @@ std::function<void(Model* m)> constructor = [&](Model* m){
   for(int i = 0; i < world.dim.x-1; i++){
     for(int j = 0; j < world.dim.y-1; j++){
 
+      //Get Index
+      int ind = i*world.dim.y+j;
+
       //Add to Position Vector
-      glm::vec3 a = glm::vec3(i, world.scale*world.heightmap[i][j], j);
-      glm::vec3 b = glm::vec3(i+1, world.scale*world.heightmap[i+1][j], j);
-      glm::vec3 c = glm::vec3(i, world.scale*world.heightmap[i][j+1], j+1);
-      glm::vec3 d = glm::vec3(i+1, world.scale*world.heightmap[i+1][j+1], j+1);
+      glm::vec3 a = glm::vec3(i, world.scale*world.heightmap[ind], j);
+      glm::vec3 b = glm::vec3(i+1, world.scale*world.heightmap[ind+256], j);
+      glm::vec3 c = glm::vec3(i, world.scale*world.heightmap[ind+1], j+1);
+      glm::vec3 d = glm::vec3(i+1, world.scale*world.heightmap[ind+256+1], j+1);
 
       //Add the Pool Height
-      bool water = (world.waterpool[(int)(i*world.dim.y+j)] > 0.0);
-      a += glm::vec3(0.0, world.scale*world.waterpool[(int)(i*world.dim.y+j)], 0.0);
-      b += glm::vec3(0.0, world.scale*world.waterpool[(int)((i+1)*world.dim.y+j)], 0.0);
-      c += glm::vec3(0.0, world.scale*world.waterpool[(int)(i*world.dim.y+j+1)], 0.0);
-      d += glm::vec3(0.0, world.scale*world.waterpool[(int)((i+1)*world.dim.y+j+1)], 0.0);
+      bool water = (world.waterpool[ind] > 0.0);
+      a += glm::vec3(0.0, world.scale*world.waterpool[ind], 0.0);
+      b += glm::vec3(0.0, world.scale*world.waterpool[ind+256], 0.0);
+      c += glm::vec3(0.0, world.scale*world.waterpool[ind+1], 0.0);
+      d += glm::vec3(0.0, world.scale*world.waterpool[ind+256+1], 0.0);
 
       //UPPER TRIANGLE
 
       //Get the Color of the Ground (Water vs. Flat)
       glm::vec3 color;
-      float p = world.waterpath[(int)(i*world.dim.y+j)];
+      float p = world.waterpath[ind];
       if(water) color = waterColor;
       else color = glm::mix(flatColor, waterColor, ease::sharpen(p,2));
 
