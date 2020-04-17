@@ -6,7 +6,7 @@ public:
   void generate();                        //Initialize Heightmap
   void erode(int cycles);                 //Perform n erosion cycles
 
-  int SEED = 10;
+  int SEED = 1587100265;
   std::chrono::milliseconds tickLength = std::chrono::milliseconds(1000);
   glm::vec2 dim = glm::vec2(256, 256);  //Size of the heightmap array
   bool updated = false;                 //Flag for remeshing
@@ -31,7 +31,7 @@ public:
 
 void World::generate(){
   std::cout<<"Generating New World"<<std::endl;
-  SEED = time(NULL);
+  //SEED = time(NULL);
   std::cout<<"Seed: "<<SEED<<std::endl;
   //Seed the Random Generator
   srand(SEED);
@@ -43,7 +43,7 @@ void World::generate(){
 
   //Mountainy:
   perlin.SetOctaveCount(8);
-  perlin.SetFrequency(0.8);
+  perlin.SetFrequency(1.0);
   perlin.SetPersistence(0.6);
 
   float min, max = 0.0;
@@ -66,7 +66,6 @@ void World::generate(){
           HYDRAULIC EROSION FUNCTIONS
 ===================================================
 */
-
 void World::erode(int cycles){
 
   //Do a series of iterations!
@@ -194,7 +193,7 @@ std::function<void(Model* m)> constructor = [&](Model* m){
         m->normals.push_back(n1.z);
 
         //Add the Color!
-        if(n1.y < steepness){
+        if(n1.y < steepness && !water){
           m->colors.push_back(steepColor.x);
           m->colors.push_back(steepColor.y);
           m->colors.push_back(steepColor.z);
@@ -232,7 +231,7 @@ std::function<void(Model* m)> constructor = [&](Model* m){
         m->normals.push_back(n2.y);
         m->normals.push_back(n2.z);
 
-        if(n2.y < steepness){
+        if(n2.y < steepness && !water){
           m->colors.push_back(steepColor.x);
           m->colors.push_back(steepColor.y);
           m->colors.push_back(steepColor.z);
@@ -300,9 +299,9 @@ std::function<void()> eventHandler = [&](){
 };
 
 std::function<glm::vec4(double)> pathColor = [](double t){
-  return glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(0.8, 0.0, 0.0, 1.0), t);
+  return glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(0.8, 0.0, 0.0, 1.0), ease::sharpen(t, 2));
 };
 
 std::function<glm::vec4(double)> poolColor = [](double t){
-  return glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(1.0, 1.0, 1.0, 1.0), (t>0.0)?1.0:0.0);
+  return glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(1.0, 1.0, 1.0, 1.0), 3.0*t);
 };

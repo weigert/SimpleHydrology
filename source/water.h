@@ -23,7 +23,7 @@ struct Drop{
   const float depositionRate = 0.1;
   const float minVol = 0.01;
   const float friction = 0.05;
-  const float volumeFactor = 100.0;
+  const float volumeFactor = 150.0;
 
   //Sedimenation Process
   void process(double* h, double* path, double* pool, glm::vec2 dim, double scale);
@@ -82,11 +82,11 @@ void Drop::process(double* h, double* p, double* b, glm::vec2 dim, double scale)
        }
 
     //Stopped Particle
-    if(length(acc) < 0.001 && length(speed) < 0.001)
+    if(length(acc) < 0.01 && length(speed) < 0.01)
       break;
 
-    //Particle in Pool
-    if(b[ind] != 0.0)
+    //Particle ends in Pool
+    if(b[nind] > 0.0)
       break;
 
     //Mass-Transfer
@@ -123,10 +123,14 @@ void Drop::process(double* h, double* p, double* b, glm::vec2 dim, double scale)
     Set the plane to the height of the lowest drain.
     Compute the volume that can be added to the set, subtract it.
     Place the rest as particles at the location of the drain.
+
+  Important:
+    The initial Plane is nudged upwards correctly after every iteration
+    And it doesn't matter if the droplet position has water or not
+    in order to identify a neighboring drain spot.
 */
 
 void Drop::flood(double* h, double* p){
-
   //Current Height
   index = (int)pos.x*256 + (int)pos.y;
   double plane = h[index] + p[index];
@@ -156,11 +160,19 @@ void Drop::flood(double* h, double* p){
       if(tried[i]) return;  //Position has been tried
       if(plane < h[i] + p[i]) return;  //Plane is lower
 
-      //Found a drain?
-      if(p[index] != 0.0 && (p[i]+h[i]) < initialplane){
+      //Find Drain
+      if(initialplane > h[i] + p[i]){
         tried[i] = true;
+
+        if(drainfound){
+          //Lowest Drain
+          if( p[drain] + h[drain] < p[i] + h[i] )
+            drain = i;
+        }
+        else
+          drain = i;
+
         drainfound = true;
-        drain = i;
         return;
       }
 
@@ -177,18 +189,27 @@ void Drop::flood(double* h, double* p){
     //Perform Flood
     fill(index);
 
-    if(set.empty()){
-      fail = 0;
+    //Drainage Point
+    if(drainfound){
+
+      //Set the Drop Position and Evaporate
+      pos = glm::vec2(drain/256, drain%256);
+      volume *= (1.0-dt*evapRate);
+
+      //Set the New Waterlevel
+      float drainage = 0.001;
+      plane = (1.0-drainage)*initialplane + drainage*(h[drain] + p[drain]);
+
+      for(auto& s: set){
+        //Compute the New Height
+        p[s] = plane - h[s];
+        if(p[s] < 0.0) p[s] = 0.0;
+      }
+
       break;
     }
 
-    //Drainage Point
-    if(drainfound){
-      pos = glm::vec2(drain/256, drain%256);
-      plane = h[drain];
-      volume *= (1.0-dt*evapRate);
-      break;
-    }
+    //Strong divergence of the field could mean set is empty.
 
     //Iterate over the Set
     double tVol = 0.0;  //Get the total volume of the guy
@@ -197,7 +218,7 @@ void Drop::flood(double* h, double* p){
       tVol += volumeFactor*(plane - (h[s]+p[s]));
 
     //Succesful Fill
-    if(tVol <= volume){
+    if(tVol <= volume && initialplane < plane){
 
       //Set Volume to Plane Height
       for(auto& s: set)
@@ -209,15 +230,12 @@ void Drop::flood(double* h, double* p){
     }
     else fail--;
 
-    //Nudge the Plane (Smoothed)
+    //Adjust Planes
+    initialplane = (plane > initialplane)?plane:initialplane;
     plane += 0.5*(volume-tVol)/(float)set.size()/volumeFactor;
   }
+
   if(fail == 0)
     volume = 0.0;
 
-  //Update Pool
-  for(int i = 0; i < 256*256; i++){
-    p[i] -= 0.001 * evapRate / volumeFactor;
-    if(p[i] < 0.0) p[i] = 0.0;
-  }
 }
