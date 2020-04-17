@@ -86,9 +86,7 @@ void World::erode(int cycles){
 
       spill--;
     }
-
   }
-
 }
 
 /*
@@ -288,12 +286,12 @@ std::function<void()> eventHandler = [&](){
 
     if(Tiny::event.keys.back().key.keysym.sym == SDLK_UP){
       cameraPos += glm::vec3(0, 5, 0);
-      camera = glm::lookAt(cameraPos, lookPos, glm::vec3(0,1,0));
+      camera = glm::rotate(glm::lookAt(cameraPos, lookPos, glm::vec3(0,1,0)), glm::radians(rotation), glm::vec3(0,1,0));
     }
 
     if(Tiny::event.keys.back().key.keysym.sym == SDLK_DOWN){
       cameraPos -= glm::vec3(0, 5, 0);
-      camera = glm::lookAt(cameraPos, lookPos, glm::vec3(0,1,0));
+      camera = glm::rotate(glm::lookAt(cameraPos, lookPos, glm::vec3(0,1,0)), glm::radians(rotation), glm::vec3(0,1,0));
     }
 
     //Remove the guy
@@ -306,5 +304,5 @@ std::function<glm::vec4(double)> pathColor = [](double t){
 };
 
 std::function<glm::vec4(double)> poolColor = [](double t){
-  return glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(1.0, 1.0, 1.0, 1.0), t);
+  return glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(1.0, 1.0, 1.0, 1.0), (t>0.0)?1.0:0.0);
 };

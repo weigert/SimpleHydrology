@@ -141,7 +141,7 @@ void Drop::flood(double* h, double* p){
     set.clear();
     bool tried[256*256] = {false};
 
-    glm::vec2 drain;
+    int drain;
     bool drainfound = false;
 
     std::function<void(int)> fill = [&](int i){
@@ -156,16 +156,11 @@ void Drop::flood(double* h, double* p){
       if(tried[i]) return;  //Position has been tried
       if(plane < h[i] + p[i]) return;  //Plane is lower
 
-      /*
-        If we find a drain, place ourselves there and
-        get out of this function!
-      */
-
       //Found a drain?
-      if(p[index] != 0.0 && (p[i]+h[i]) < initialplane-0.01){
+      if(p[index] != 0.0 && (p[i]+h[i]) < initialplane){
         tried[i] = true;
         drainfound = true;
-        drain = glm::vec2(i/256, i%256);
+        drain = i;
         return;
       }
 
@@ -182,17 +177,16 @@ void Drop::flood(double* h, double* p){
     //Perform Flood
     fill(index);
 
-    if(drainfound){
-      //Place the Droplet at the Drain
-      pos = drain;
-
-      //We should compute the volume of the set!
-
+    if(set.empty()){
+      fail = 0;
       break;
     }
 
-    if(set.empty()){
-      fail = 0;
+    //Drainage Point
+    if(drainfound){
+      pos = glm::vec2(drain/256, drain%256);
+      plane = h[drain];
+      volume *= (1.0-dt*evapRate);
       break;
     }
 
@@ -215,17 +209,15 @@ void Drop::flood(double* h, double* p){
     }
     else fail--;
 
-    //Nudge the Plane (0.5 for smoother approach)
+    //Nudge the Plane (Smoothed)
     plane += 0.5*(volume-tVol)/(float)set.size()/volumeFactor;
   }
   if(fail == 0)
     volume = 0.0;
-  else
-    volume *= (1.0-dt*evapRate);
 
   //Update Pool
   for(int i = 0; i < 256*256; i++){
-    p[i] -= 0.01 * evapRate / volumeFactor;
+    p[i] -= 0.001 * evapRate / volumeFactor;
     if(p[i] < 0.0) p[i] = 0.0;
   }
 }
