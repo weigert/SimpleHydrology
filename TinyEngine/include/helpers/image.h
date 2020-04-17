@@ -14,7 +14,7 @@ namespace image {
   }
 
   template<typename T>
-  SDL_Surface* make(glm::vec2 size, T* data, std::function<glm::vec4(T)> handle){
+  SDL_Surface* make(glm::ivec2 size, T* data, std::function<glm::vec4(T)> handle){
     SDL_Surface *s = SDL_CreateRGBSurface(0, size.x, size.y, 32, 0, 0, 0, 0);
     SDL_LockSurface(s);
 
@@ -33,7 +33,7 @@ namespace image {
   }
 
   template<typename T>
-  SDL_Surface* make(glm::vec2 size, T* data1, T* data2, std::function<glm::vec4(T, T)> handle){
+  SDL_Surface* make(glm::ivec2 size, T* data1, T* data2, std::function<glm::vec4(T, T)> handle){
     SDL_Surface *s = SDL_CreateRGBSurface(0, size.x, size.y, 32, 0, 0, 0, 0);
     SDL_LockSurface(s);
 

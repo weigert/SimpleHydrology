@@ -21,8 +21,8 @@ int main( int argc, char* args[] ) {
   Billboard image(WIDTH, HEIGHT, false); //1200x800, depth only
 
   //Setup 2D Images
-  Billboard map(256, 256, false); //Render target for automata
-  map.raw(image::make<double>(glm::vec2(256, 256), world.waterpath, world.waterpool, hydromap));
+  Billboard map(world.dim.x, world.dim.y, false); //Render target for automata
+  map.raw(image::make<double>(world.dim, world.waterpath, world.waterpool, hydromap));
 
   //Setup World Model
   Model model(constructor);
@@ -95,10 +95,8 @@ int main( int argc, char* args[] ) {
       model.construct(constructor); //Reconstruct Updated Model
 
       //Redraw the Path and Death Image
-      //path.raw(image::make<double>(glm::vec2(256, 256), world.waterpath, pathColor));
-      //pool.raw(image::make<double>(glm::vec2(256, 256), world.waterpool, poolColor));
       if(viewmap)
-        map.raw(image::make<double>(glm::vec2(256, 256), world.waterpath, world.waterpool, hydromap));
+        map.raw(image::make<double>(world.dim, world.waterpath, world.waterpool, hydromap));
     }
   });
 

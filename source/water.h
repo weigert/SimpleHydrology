@@ -3,16 +3,16 @@
 struct Drop{
   //Construct Particle at Position
   Drop(glm::vec2 _pos){ pos = _pos; }
-  Drop(glm::vec2 _p, double v){
+  Drop(glm::vec2 _p, glm::ivec2 dim, double v){
     pos = _p;
-    int index = _p.x*256+_p.y;
+    int index = _p.x*dim.y+_p.y;
     volume = v;
   }
 
+  //Properties
   int index;
   glm::vec2 pos;
   glm::vec2 speed = glm::vec2(0.0);
-
   float volume = 1.0;   //This will vary in time
   float sediment = 0.0; //Fraction of Volume that is Sediment!
 
@@ -22,29 +22,29 @@ struct Drop{
   const float evapRate = 0.001;
   const float depositionRate = 0.1;
   const float minVol = 0.01;
-  const float friction = 0.05;
-  const float volumeFactor = 200.0;
+  const float friction = 0.1;
+  const float volumeFactor = 100.0; //"Water Deposition Rate"
 
   //Sedimenation Process
-  void process(double* h, double* path, double* pool, bool* track, glm::vec2 dim, double scale);
-  void flood(double* h, double* pool);
+  void process(double* h, double* path, double* pool, bool* track, glm::ivec2 dim, double scale);
+  void flood(double* h, double* pool, glm::ivec2 dim);
 };
 
-glm::vec3 surfaceNormal(int index, double* h, double scale){
-  glm::vec3 n = glm::vec3(0.15) * glm::normalize(glm::vec3(scale*(h[index]-h[index+256]), 1.0, 0.0));  //Positive X
-  n += glm::vec3(0.15) * glm::normalize(glm::vec3(scale*(h[index-256]-h[index]), 1.0, 0.0));  //Negative X
+glm::vec3 surfaceNormal(int index, double* h, glm::ivec2 dim, double scale){
+  glm::vec3 n = glm::vec3(0.15) * glm::normalize(glm::vec3(scale*(h[index]-h[index+dim.y]), 1.0, 0.0));  //Positive X
+  n += glm::vec3(0.15) * glm::normalize(glm::vec3(scale*(h[index-dim.y]-h[index]), 1.0, 0.0));  //Negative X
   n += glm::vec3(0.15) * glm::normalize(glm::vec3(0.0, 1.0, scale*(h[index]-h[index+1])));    //Positive Y
   n += glm::vec3(0.15) * glm::normalize(glm::vec3(0.0, 1.0, scale*(h[index-1]-h[index])));  //Negative Y
 
   //Diagonals! (This removes the last spatial artifacts)
-  n += glm::vec3(0.1) * glm::normalize(glm::vec3(scale*(h[index]-h[index+257])/sqrt(2), sqrt(2), scale*(h[index]-h[index+257])/sqrt(2)));    //Positive Y
-  n += glm::vec3(0.1) * glm::normalize(glm::vec3(scale*(h[index]-h[index+255])/sqrt(2), sqrt(2), scale*(h[index]-h[index+255])/sqrt(2)));    //Positive Y
-  n += glm::vec3(0.1) * glm::normalize(glm::vec3(scale*(h[index]-h[index-255])/sqrt(2), sqrt(2), scale*(h[index]-h[index-255])/sqrt(2)));    //Positive Y
-  n += glm::vec3(0.1) * glm::normalize(glm::vec3(scale*(h[index]-h[index-257])/sqrt(2), sqrt(2), scale*(h[index]-h[index-257])/sqrt(2)));    //Positive Y
+  n += glm::vec3(0.1) * glm::normalize(glm::vec3(scale*(h[index]-h[index+dim.y+1])/sqrt(2), sqrt(2), scale*(h[index]-h[index+dim.y+1])/sqrt(2)));    //Positive Y
+  n += glm::vec3(0.1) * glm::normalize(glm::vec3(scale*(h[index]-h[index+dim.y-1])/sqrt(2), sqrt(2), scale*(h[index]-h[index+dim.y-1])/sqrt(2)));    //Positive Y
+  n += glm::vec3(0.1) * glm::normalize(glm::vec3(scale*(h[index]-h[index-dim.y+1])/sqrt(2), sqrt(2), scale*(h[index]-h[index-dim.y+1])/sqrt(2)));    //Positive Y
+  n += glm::vec3(0.1) * glm::normalize(glm::vec3(scale*(h[index]-h[index-dim.y-1])/sqrt(2), sqrt(2), scale*(h[index]-h[index-dim.y-1])/sqrt(2)));    //Positive Y
   return n;
 }
 
-void Drop::process(double* h, double* p, double* b, bool* track, glm::vec2 dim, double scale){
+void Drop::process(double* h, double* p, double* b, bool* track, glm::ivec2 dim, double scale){
 
   glm::ivec2 ipos;
 
@@ -52,24 +52,19 @@ void Drop::process(double* h, double* p, double* b, bool* track, glm::vec2 dim, 
 
     //Initial Position
     ipos = pos;
-    int ind = ipos.x*256+ipos.y;
+    int ind = ipos.x*dim.y+ipos.y;
 
     //Add to Path
     track[ind] = true;
 
-    glm::vec3 n = surfaceNormal(ind, h, scale);
-
-    //Effective Parameters
-    /*
-    float effD = depositionRate;
-    float effF = friction;
-    float effR = evapRate;
-    */
+    glm::vec3 n = surfaceNormal(ind, h, dim, scale);
 
     //Effective Parameter Set
     float effD = depositionRate;
-    float effF = friction+0.1*p[ind]; //Higher Friction in a Stream
-    float effR = evapRate*(1.0-0.1*p[ind]);
+    /*Lower Friction, Lower Evaporation in Streams
+    makes particles prefer established streams -> "curvy"*/
+    float effF = friction*(1.0-0.5*p[ind]);
+    float effR = evapRate*(1.0-0.2*p[ind]);
 
     //Newtonian Mechanics
     glm::vec2 acc = glm::vec2(n.x, n.z)/(volume*density);
@@ -78,20 +73,20 @@ void Drop::process(double* h, double* p, double* b, bool* track, glm::vec2 dim, 
     speed *= (1.0-dt*effF);
 
     //New Position
-    int nind = (int)(pos.x)*256+(int)(pos.y);
+    int nind = (int)(pos.x)*dim.y+(int)(pos.y);
 
     //Out-Of-Bounds
     if(!glm::all(glm::greaterThanEqual(pos, glm::vec2(0))) ||
-       !glm::all(glm::lessThan(pos, dim))){
+       !glm::all(glm::lessThan((glm::ivec2)pos, dim))){
          volume = 0.0;
          break;
        }
 
-    //Stopped Particle
-    if(length(acc) < 0.01 && length(speed) < 0.01)
+    //Particle is not accelerated
+    if(p[nind] > 0.5 && length(acc) < 0.01)
       break;
 
-    //Particle ends in Pool
+    //Particle enters Pool
     if(b[nind] > 0.0)
       break;
 
@@ -130,63 +125,64 @@ void Drop::process(double* h, double* p, double* b, bool* track, glm::vec2 dim, 
     in order to identify a neighboring drain spot.
 */
 
-void Drop::flood(double* h, double* p){
+void Drop::flood(double* h, double* p, glm::ivec2 dim){
+
   //Current Height
-  index = (int)pos.x*256 + (int)pos.y;
+  index = (int)pos.x*dim.y + (int)pos.y;
   double plane = h[index] + p[index];
   double initialplane = plane;
 
-  float tol = 0.001;
+  //Floodset
+  std::vector<int> set;
   int fail = 10;
-  std::vector<int> set; //Floodset
 
   //Iterate
   while(volume > minVol && fail){
+
     set.clear();
-    bool tried[256*256] = {false};
+    bool tried[dim.x*dim.y] = {false};
 
     int drain;
     bool drainfound = false;
 
     std::function<void(int)> fill = [&](int i){
 
-      int x = i/256;
-      int y = i%256;
-
       //Out of Bounds
-      if(x >= 256 || x < 0) return;
-      if(y >= 256 || y < 0) return;
+      if(i/dim.y >= dim.x || i/dim.y < 0) return;
+      if(i%dim.y >= dim.y || i%dim.y < 0) return;
 
-      if(tried[i]) return;  //Position has been tried
+      //Position has been tried
+      if(tried[i]) return;
       tried[i] = true;
 
+      //Wall / Boundary
       if(plane < h[i] + p[i]) return;
 
-      //Find Drain
+      //Drainage Point
       if(initialplane > h[i] + p[i]){
 
-        if(drainfound){
-          //Lowest Drain
-          if( p[drain] + h[drain] < p[i] + h[i] )
-            drain = i;
-        }
-        else
+        //No Drain yet
+        if(!drainfound)
+          drain = i;
+
+        //Lower Drain
+        else if( p[drain] + h[drain] < p[i] + h[i] )
           drain = i;
 
         drainfound = true;
         return;
       }
 
+      //Part of the Pool
       set.push_back(i);
-
-      fill(i+256);  //Fill Neighbors
-      fill(i-256);
+      fill(i+dim.y);    //Fill Neighbors
+      fill(i-dim.y);
       fill(i+1);
       fill(i-1);
-      fill(i+257);  //Diagonals (Improves Drainage)
-      fill(i-257);
-      fill(i+255);
-      fill(i-255);
+      fill(i+dim.y+1);  //Diagonals (Improves Drainage)
+      fill(i-dim.y-1);
+      fill(i+dim.y-1);
+      fill(i-dim.y+1);
     };
 
     //Perform Flood
@@ -196,42 +192,39 @@ void Drop::flood(double* h, double* p){
     if(drainfound){
 
       //Set the Drop Position and Evaporate
-      pos = glm::vec2(drain/256, drain%256);
+      pos = glm::vec2(drain/dim.y, drain%dim.y);
 
-      //Set the New Waterlevel
+      //Set the New Waterlevel (Slowly)
       float drainage = 0.001;
       plane = (1.0-drainage)*initialplane + drainage*(h[drain] + p[drain]);
 
-      for(auto& s: set){
-        //Compute the New Height
-        p[s] = plane - h[s];
-        if(p[s] < 0.0) p[s] = 0.0;
-      }
+      //Compute the New Height
+      for(auto& s: set)
+        p[s] = (plane > h[s])?(plane-h[s]):0.0;
 
       //Remove Sediment
       sediment = 0.0;
       break;
     }
 
-    //Strong divergence of the field could mean set is empty.
-
-    //Iterate over the Set
-    double tVol = 0.0;  //Get the total volume of the guy
-
+    //Get Volume under Plane
+    double tVol = 0.0;
     for(auto& s: set)
       tVol += volumeFactor*(plane - (h[s]+p[s]));
 
-    //Succesful Fill
+    //We can partially fill this volume
     if(tVol <= volume && initialplane < plane){
 
-      //Set Volume to Plane Height
+      //Raise water level to plane height
       for(auto& s: set)
         p[s] = plane - h[s];
 
-      //Adjust Volume
+      //Adjust Drop Volume
       volume -= tVol;
       tVol = 0.0;
     }
+
+    //Plane was too high.
     else fail--;
 
     //Adjust Planes
@@ -239,6 +232,7 @@ void Drop::flood(double* h, double* p){
     plane += 0.5*(volume-tVol)/(float)set.size()/volumeFactor;
   }
 
+  //Couldn't place the volume (for some reason)- so ignore this drop.
   if(fail == 0)
     volume = 0.0;
 }

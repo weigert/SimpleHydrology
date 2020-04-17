@@ -7,9 +7,9 @@ public:
   void erode(int cycles);               //Erode with N Particles
 
   int SEED = 1587100265;
-  glm::vec2 dim = glm::vec2(256, 256);  //Size of the heightmap array
+  glm::ivec2 dim = glm::vec2(256, 256);  //Size of the heightmap array
 
-  double scale = 60.0;                  //"Physical" Height scaling of the map
+  double scale = 80.0;                  //"Physical" Height scaling of the map
   double heightmap[256*256] = {0.0};    //Flat Array
 
   double waterpath[256*256] = {0.0};    //Water Path Storage (Rivers)
@@ -27,7 +27,7 @@ public:
 
 void World::generate(){
   std::cout<<"Generating New World"<<std::endl;
-  SEED = time(NULL);
+  //SEED = time(NULL);
   std::cout<<"Seed: "<<SEED<<std::endl;
   //Seed the Random Generator
   srand(SEED);
@@ -44,7 +44,7 @@ void World::generate(){
 
   float min, max = 0.0;
   for(int i = 0; i < dim.x*dim.y; i++){
-    heightmap[i] = perlin.GetValue((i/256)*(1.0/dim.x), (i%256)*(1.0/dim.y), SEED);
+    heightmap[i] = perlin.GetValue((i/dim.y)*(1.0/dim.x), (i%dim.y)*(1.0/dim.y), SEED);
     if(heightmap[i] > max) max = heightmap[i];
     if(heightmap[i] < min) min = heightmap[i];
   }
@@ -62,7 +62,7 @@ void World::generate(){
 void World::erode(int cycles){
 
   //Track the Movement of all Particles
-  bool track[256*256] = {false};
+  bool track[dim.x*dim.y] = {false};
 
   //Do a series of iterations!
   for(int i = 0; i < cycles; i++){
@@ -78,7 +78,7 @@ void World::erode(int cycles){
       drop.process(heightmap, waterpath, waterpool, track, dim, scale);
 
       if(drop.volume > drop.minVol)
-        drop.flood(heightmap, waterpool);
+        drop.flood(heightmap, waterpool, dim);
 
       spill--;
     }
@@ -86,7 +86,7 @@ void World::erode(int cycles){
 
   //Update Path
   float lrate = 0.01;
-  for(int i = 0; i < 256*256; i++)
+  for(int i = 0; i < dim.x*dim.y; i++)
     waterpath[i] = (1.0-lrate)*waterpath[i] + lrate*((track[i])?1.0:0.0);
 
 }
@@ -155,16 +155,16 @@ std::function<void(Model* m)> constructor = [&](Model* m){
 
       //Add to Position Vector
       glm::vec3 a = glm::vec3(i, world.scale*world.heightmap[ind], j);
-      glm::vec3 b = glm::vec3(i+1, world.scale*world.heightmap[ind+256], j);
+      glm::vec3 b = glm::vec3(i+1, world.scale*world.heightmap[ind+world.dim.y], j);
       glm::vec3 c = glm::vec3(i, world.scale*world.heightmap[ind+1], j+1);
-      glm::vec3 d = glm::vec3(i+1, world.scale*world.heightmap[ind+256+1], j+1);
+      glm::vec3 d = glm::vec3(i+1, world.scale*world.heightmap[ind+world.dim.y+1], j+1);
 
       //Add the Pool Height
       bool water = (world.waterpool[ind] > 0.0);
       a += glm::vec3(0.0, world.scale*world.waterpool[ind], 0.0);
-      b += glm::vec3(0.0, world.scale*world.waterpool[ind+256], 0.0);
+      b += glm::vec3(0.0, world.scale*world.waterpool[ind+world.dim.y], 0.0);
       c += glm::vec3(0.0, world.scale*world.waterpool[ind+1], 0.0);
-      d += glm::vec3(0.0, world.scale*world.waterpool[ind+256+1], 0.0);
+      d += glm::vec3(0.0, world.scale*world.waterpool[ind+world.dim.y+1], 0.0);
 
       //UPPER TRIANGLE
 
@@ -295,7 +295,6 @@ std::function<void()> eventHandler = [&](){
       cameraPos += glm::vec3(0, 5, 0);
       camera = glm::rotate(glm::lookAt(cameraPos, lookPos, glm::vec3(0,1,0)), glm::radians(rotation), glm::vec3(0,1,0));
     }
-
 
     if(Tiny::event.keys.back().key.keysym.sym == SDLK_DOWN){
       cameraPos -= glm::vec3(0, 5, 0);
