@@ -76,16 +76,16 @@ void World::erode(int cycles){
     glm::vec2 newpos = glm::vec2(rand()%(int)dim.x, rand()%(int)dim.y);
     Drop drop(newpos);
 
-    //while(drop.volume > drop.minVol){
+    int spill = 5;
+    while(drop.volume > drop.minVol && spill != 0){
 
       drop.process(heightmap, waterpath, waterpool, dim, scale);
 
-      //Volume is set to zero if it is e.g. out of bounds
       if(drop.volume > drop.minVol)
-        //Flood with the Particle
         drop.flood(heightmap, waterpool);
 
-  //  }
+      spill--;
+    }
 
   }
 

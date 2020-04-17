@@ -141,6 +141,9 @@ void Drop::flood(double* h, double* p){
     set.clear();
     bool tried[256*256] = {false};
 
+    glm::vec2 drain;
+    bool drainfound = false;
+
     std::function<void(int)> fill = [&](int i){
 
       int x = i/256;
@@ -158,6 +161,14 @@ void Drop::flood(double* h, double* p){
         get out of this function!
       */
 
+      //Found a drain?
+      if(p[index] != 0.0 && (p[i]+h[i]) < initialplane-0.01){
+        tried[i] = true;
+        drainfound = true;
+        drain = glm::vec2(i/256, i%256);
+        return;
+      }
+
       set.push_back(i);
       tried[i] = true;
 
@@ -171,8 +182,17 @@ void Drop::flood(double* h, double* p){
     //Perform Flood
     fill(index);
 
+    if(drainfound){
+      //Place the Droplet at the Drain
+      pos = drain;
+
+      //We should compute the volume of the set!
+
+      break;
+    }
+
     if(set.empty()){
-      fail = true;
+      fail = 0;
       break;
     }
 
@@ -200,10 +220,12 @@ void Drop::flood(double* h, double* p){
   }
   if(fail == 0)
     volume = 0.0;
+  else
+    volume *= (1.0-dt*evapRate);
 
   //Update Pool
   for(int i = 0; i < 256*256; i++){
-    p[i] -= 0.1 * evapRate / volumeFactor;
+    p[i] -= 0.01 * evapRate / volumeFactor;
     if(p[i] < 0.0) p[i] = 0.0;
   }
 }
