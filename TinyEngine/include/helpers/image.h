@@ -31,4 +31,23 @@ namespace image {
     SDL_UnlockSurface(s);
     return s;
   }
+
+  template<typename T>
+  SDL_Surface* make(glm::vec2 size, T* data1, T* data2, std::function<glm::vec4(T, T)> handle){
+    SDL_Surface *s = SDL_CreateRGBSurface(0, size.x, size.y, 32, 0, 0, 0, 0);
+    SDL_LockSurface(s);
+
+    unsigned char* img_raw = (unsigned char*)s->pixels; //Raw Data
+
+    for(int i = 0; i < size.x*size.y; i++){
+      glm::vec4 color = handle(data1[i], data2[i]);  //Construct from Algorithm
+      *(img_raw+4*i)    = (unsigned char)(255*color.x);
+      *(img_raw+4*i+1)  = (unsigned char)(255*color.y);
+      *(img_raw+4*i+2)  = (unsigned char)(255*color.z);
+      *(img_raw+4*i+3)  = (unsigned char)(255*color.w);
+    }
+
+    SDL_UnlockSurface(s);
+    return s;
+  }
 };

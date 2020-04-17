@@ -23,10 +23,10 @@ struct Drop{
   const float depositionRate = 0.1;
   const float minVol = 0.01;
   const float friction = 0.05;
-  const float volumeFactor = 150.0;
+  const float volumeFactor = 200.0;
 
   //Sedimenation Process
-  void process(double* h, double* path, double* pool, glm::vec2 dim, double scale);
+  void process(double* h, double* path, double* pool, bool* track, glm::vec2 dim, double scale);
   void flood(double* h, double* pool);
 };
 
@@ -44,10 +44,9 @@ glm::vec3 surfaceNormal(int index, double* h, double scale){
   return n;
 }
 
-void Drop::process(double* h, double* p, double* b, glm::vec2 dim, double scale){
+void Drop::process(double* h, double* p, double* b, bool* track, glm::vec2 dim, double scale){
 
   glm::ivec2 ipos;
-  bool path[256*256] = {false};
 
   while(volume > minVol){
 
@@ -56,14 +55,21 @@ void Drop::process(double* h, double* p, double* b, glm::vec2 dim, double scale)
     int ind = ipos.x*256+ipos.y;
 
     //Add to Path
-    path[ind] = true;
+    track[ind] = true;
 
     glm::vec3 n = surfaceNormal(ind, h, scale);
 
     //Effective Parameters
+    /*
     float effD = depositionRate;
     float effF = friction;
     float effR = evapRate;
+    */
+
+    //Effective Parameter Set
+    float effD = depositionRate;
+    float effF = friction+0.1*p[ind]; //Higher Friction in a Stream
+    float effR = evapRate*(1.0-0.1*p[ind]);
 
     //Newtonian Mechanics
     glm::vec2 acc = glm::vec2(n.x, n.z)/(volume*density);
@@ -99,12 +105,6 @@ void Drop::process(double* h, double* p, double* b, glm::vec2 dim, double scale)
     //Evaporate
     volume *= (1.0-dt*effR);
   }
-
-  //Update Path
-  float lrate = 0.01;
-  for(int i = 0; i < 256*256; i++)
-    if(path[i]) p[i] = (1.0-lrate)*p[i] + lrate;
-    else p[i] *= (1.0-lrate*0.01);
 };
 
 /*
@@ -158,11 +158,12 @@ void Drop::flood(double* h, double* p){
       if(y >= 256 || y < 0) return;
 
       if(tried[i]) return;  //Position has been tried
-      if(plane < h[i] + p[i]) return;  //Plane is lower
+      tried[i] = true;
+
+      if(plane < h[i] + p[i]) return;
 
       //Find Drain
       if(initialplane > h[i] + p[i]){
-        tried[i] = true;
 
         if(drainfound){
           //Lowest Drain
@@ -177,13 +178,15 @@ void Drop::flood(double* h, double* p){
       }
 
       set.push_back(i);
-      tried[i] = true;
 
-      //Fill Neighbors
-      fill(i+256);
+      fill(i+256);  //Fill Neighbors
       fill(i-256);
       fill(i+1);
       fill(i-1);
+      fill(i+257);  //Diagonals (Improves Drainage)
+      fill(i-257);
+      fill(i+255);
+      fill(i-255);
     };
 
     //Perform Flood
@@ -194,7 +197,6 @@ void Drop::flood(double* h, double* p){
 
       //Set the Drop Position and Evaporate
       pos = glm::vec2(drain/256, drain%256);
-      volume *= (1.0-dt*evapRate);
 
       //Set the New Waterlevel
       float drainage = 0.001;
@@ -206,6 +208,8 @@ void Drop::flood(double* h, double* p){
         if(p[s] < 0.0) p[s] = 0.0;
       }
 
+      //Remove Sediment
+      sediment = 0.0;
       break;
     }
 
@@ -237,5 +241,4 @@ void Drop::flood(double* h, double* p){
 
   if(fail == 0)
     volume = 0.0;
-
 }

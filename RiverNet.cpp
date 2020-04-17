@@ -21,10 +21,8 @@ int main( int argc, char* args[] ) {
   Billboard image(WIDTH, HEIGHT, false); //1200x800, depth only
 
   //Setup 2D Images
-  Billboard path(256, 256, false); //Render target for automata
-  Billboard pool(256, 256, false); //Render target for automata
-  path.raw(image::make<double>(glm::vec2(256, 256), world.waterpath, pathColor));
-  pool.raw(image::make<double>(glm::vec2(256, 256), world.waterpool, poolColor));
+  Billboard map(256, 256, false); //Render target for automata
+  map.raw(image::make<double>(glm::vec2(256, 256), world.waterpath, world.waterpool, hydromap));
 
   //Setup World Model
   Model model(constructor);
@@ -71,25 +69,20 @@ int main( int argc, char* args[] ) {
     image.render();                     //Render Image
 
     //Render Additional Information
-    billboard.use();
-    glActiveTexture(GL_TEXTURE0+0);
-    glBindTexture(GL_TEXTURE_2D, image.depthTexture);
-    billboard.setInt("imageTexture", 0);
-    image.move(glm::vec2(0.0, 0.8), glm::vec2(0.2));
-    billboard.setMat4("model", image.model);
-    image.render();
+    if(viewmap){
+      billboard.use();
+      glActiveTexture(GL_TEXTURE0+0);
+      glBindTexture(GL_TEXTURE_2D, image.depthTexture);
+      billboard.setInt("imageTexture", 0);
+      image.move(glm::vec2(0.0, 0.8), glm::vec2(0.2));
+      billboard.setMat4("model", image.model);
+      image.render();
 
-    //Path Visualization
-    glBindTexture(GL_TEXTURE_2D, path.texture);
-    path.move(glm::vec2(0.0, 0.0), glm::vec2(0.4));
-    billboard.setMat4("model", path.model);
-    path.render();
-
-    //Pool Visualization
-    glBindTexture(GL_TEXTURE_2D, pool.texture);
-    pool.move(glm::vec2(0.6, 0.0), glm::vec2(0.4));
-    billboard.setMat4("model", pool.model);
-    pool.render();
+      glBindTexture(GL_TEXTURE_2D, map.texture);
+      map.move(glm::vec2(0.0, 0.0), glm::vec2(0.4));
+      billboard.setMat4("model", map.model);
+      map.render();
+    }
   };
 
   //Define a World Mesher?
@@ -102,8 +95,10 @@ int main( int argc, char* args[] ) {
       model.construct(constructor); //Reconstruct Updated Model
 
       //Redraw the Path and Death Image
-      path.raw(image::make<double>(glm::vec2(256, 256), world.waterpath, pathColor));
-      pool.raw(image::make<double>(glm::vec2(256, 256), world.waterpool, poolColor));
+      //path.raw(image::make<double>(glm::vec2(256, 256), world.waterpath, pathColor));
+      //pool.raw(image::make<double>(glm::vec2(256, 256), world.waterpool, poolColor));
+      if(viewmap)
+        map.raw(image::make<double>(glm::vec2(256, 256), world.waterpath, world.waterpool, hydromap));
     }
   });
 

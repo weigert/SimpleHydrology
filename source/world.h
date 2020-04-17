@@ -3,24 +3,20 @@
 class World{
 public:
   //Constructor
-  void generate();                        //Initialize Heightmap
-  void erode(int cycles);                 //Perform n erosion cycles
+  void generate();                      //Initialize Heightmap
+  void erode(int cycles);               //Erode with N Particles
 
   int SEED = 1587100265;
-  std::chrono::milliseconds tickLength = std::chrono::milliseconds(1000);
   glm::vec2 dim = glm::vec2(256, 256);  //Size of the heightmap array
-  bool updated = false;                 //Flag for remeshing
 
   double scale = 60.0;                  //"Physical" Height scaling of the map
   double heightmap[256*256] = {0.0};    //Flat Array
 
-  double waterpath[256*256] = {0.0};
-  double waterpool[256*256] = {0.0};
+  double waterpath[256*256] = {0.0};    //Water Path Storage (Rivers)
+  double waterpool[256*256] = {0.0};    //Water Pool Storage (Lakes / Ponds)
 
-  //Erosion Steps
+  //Erosion Process
   bool active = false;
-  int remaining = 200000;
-  int erosionstep = 1000;
 };
 
 /*
@@ -31,7 +27,7 @@ public:
 
 void World::generate(){
   std::cout<<"Generating New World"<<std::endl;
-  //SEED = time(NULL);
+  SEED = time(NULL);
   std::cout<<"Seed: "<<SEED<<std::endl;
   //Seed the Random Generator
   srand(SEED);
@@ -56,9 +52,6 @@ void World::generate(){
   for(int i = 0; i < dim.x*dim.y; i++){
     heightmap[i] = (heightmap[i] - min)/(max - min);
   }
-
-  //Construct all Triangles...
-  updated = true;
 }
 
 /*
@@ -68,6 +61,9 @@ void World::generate(){
 */
 void World::erode(int cycles){
 
+  //Track the Movement of all Particles
+  bool track[256*256] = {false};
+
   //Do a series of iterations!
   for(int i = 0; i < cycles; i++){
 
@@ -75,10 +71,11 @@ void World::erode(int cycles){
     glm::vec2 newpos = glm::vec2(rand()%(int)dim.x, rand()%(int)dim.y);
     Drop drop(newpos);
 
+
     int spill = 5;
     while(drop.volume > drop.minVol && spill != 0){
 
-      drop.process(heightmap, waterpath, waterpool, dim, scale);
+      drop.process(heightmap, waterpath, waterpool, track, dim, scale);
 
       if(drop.volume > drop.minVol)
         drop.flood(heightmap, waterpool);
@@ -86,6 +83,12 @@ void World::erode(int cycles){
       spill--;
     }
   }
+
+  //Update Path
+  float lrate = 0.01;
+  for(int i = 0; i < 256*256; i++)
+    waterpath[i] = (1.0-lrate)*waterpath[i] + lrate*((track[i])?1.0:0.0);
+
 }
 
 /*
@@ -125,6 +128,7 @@ float lightStrength = 1.4;
 glm::mat4 depthModelMatrix = glm::mat4(1.0);
 glm::mat4 depthProjection = glm::ortho<float>(-300, 300, -300, 300, 0, 800);
 glm::mat4 depthCamera = glm::lookAt(lightPos, glm::vec3(0), glm::vec3(0,1,0));
+bool viewmap = true;
 
 glm::mat4 biasMatrix = glm::mat4(
     0.5, 0.0, 0.0, 0.0,
@@ -168,7 +172,7 @@ std::function<void(Model* m)> constructor = [&](Model* m){
       glm::vec3 color;
       float p = world.waterpath[ind];
       if(water) color = waterColor;
-      else color = glm::mix(flatColor, waterColor, ease::sharpen(p,2));
+      else color = glm::mix(flatColor, waterColor, p);
 
       //Add Indices
       m->indices.push_back(m->positions.size()/3+0);
@@ -283,10 +287,15 @@ std::function<void()> eventHandler = [&](){
       paused = !paused;
     }
 
+    if(Tiny::event.keys.back().key.keysym.sym == SDLK_ESCAPE){
+      viewmap = !viewmap;
+    }
+
     if(Tiny::event.keys.back().key.keysym.sym == SDLK_UP){
       cameraPos += glm::vec3(0, 5, 0);
       camera = glm::rotate(glm::lookAt(cameraPos, lookPos, glm::vec3(0,1,0)), glm::radians(rotation), glm::vec3(0,1,0));
     }
+
 
     if(Tiny::event.keys.back().key.keysym.sym == SDLK_DOWN){
       cameraPos -= glm::vec3(0, 5, 0);
@@ -298,10 +307,8 @@ std::function<void()> eventHandler = [&](){
   }
 };
 
-std::function<glm::vec4(double)> pathColor = [](double t){
-  return glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(0.8, 0.0, 0.0, 1.0), ease::sharpen(t, 2));
-};
-
-std::function<glm::vec4(double)> poolColor = [](double t){
-  return glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(1.0, 1.0, 1.0, 1.0), 3.0*t);
+std::function<glm::vec4(double, double)> hydromap = [](double t1, double t2){
+  glm::vec4 color = glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(0.2, 0.5, 1.0, 1.0), t1);
+  if(t2 > 0.0) color = glm::mix(color, glm::vec4(0.15, 0.15, 0.45, 1.0), 1.0 - ease::langmuir(t2, 5.0));
+  return color;
 };
