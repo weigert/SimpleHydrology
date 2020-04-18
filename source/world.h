@@ -1,3 +1,4 @@
+#include "vegetation.h"
 #include "water.h"
 
 class World{
@@ -5,15 +6,21 @@ public:
   //Constructor
   void generate();                      //Initialize Heightmap
   void erode(int cycles);               //Erode with N Particles
+  void grow();
 
-  int SEED = 1587100265;
+//  int SEED = 1587100265;
+  int SEED = 1587179400;
   glm::ivec2 dim = glm::vec2(256, 256);  //Size of the heightmap array
 
-  double scale = 80.0;                  //"Physical" Height scaling of the map
+  double scale = 60.0;                  //"Physical" Height scaling of the map
   double heightmap[256*256] = {0.0};    //Flat Array
 
   double waterpath[256*256] = {0.0};    //Water Path Storage (Rivers)
   double waterpool[256*256] = {0.0};    //Water Pool Storage (Lakes / Ponds)
+
+  //Trees
+  std::vector<Plant> trees;
+  double plantdensity[256*256] = {0.0}; //Density for Plants
 
   //Erosion Process
   bool active = false;
@@ -40,9 +47,9 @@ void World::generate(){
   //Mountainy:
   perlin.SetOctaveCount(8);
   perlin.SetFrequency(1.0);
-  perlin.SetPersistence(0.6);
+  perlin.SetPersistence(0.4);
 
-  float min, max = 0.0;
+  double min, max = 0.0;
   for(int i = 0; i < dim.x*dim.y; i++){
     heightmap[i] = perlin.GetValue((i/dim.y)*(1.0/dim.x), (i%dim.y)*(1.0/dim.y), SEED);
     if(heightmap[i] > max) max = heightmap[i];
@@ -75,7 +82,7 @@ void World::erode(int cycles){
     int spill = 5;
     while(drop.volume > drop.minVol && spill != 0){
 
-      drop.process(heightmap, waterpath, waterpool, track, dim, scale);
+      drop.process(heightmap, waterpath, waterpool, track, plantdensity, dim, scale);
 
       if(drop.volume > drop.minVol)
         drop.flood(heightmap, waterpool, dim);
@@ -85,17 +92,106 @@ void World::erode(int cycles){
   }
 
   //Update Path
-  float lrate = 0.01;
+  double lrate = 0.01;
   for(int i = 0; i < dim.x*dim.y; i++)
     waterpath[i] = (1.0-lrate)*waterpath[i] + lrate*((track[i])?1.0:0.0);
 
 }
 
+void World::grow(){
+
+  //Random Position
+  if(rand()%2 == 0){
+    int i = rand()%(dim.x*dim.y);
+    glm::vec3 n = surfaceNormal(i, heightmap, dim, scale);
+
+    if( waterpool[i] == 0.0 &&
+        waterpath[i] < 0.2 &&
+        n.y > 0.8 ){
+
+        Plant newtree(i, dim);
+        trees.push_back(newtree);
+
+        //Raise Plant Density
+        plantdensity[i] += 1.0;
+        plantdensity[i + 1] += 0.6;
+        plantdensity[i - 1] += 0.6;
+        plantdensity[i + 256] += 0.6;
+        plantdensity[i - 256] += 0.6;
+        plantdensity[i + 255] += 0.4;
+        plantdensity[i - 255] += 0.4;
+        plantdensity[i + 257] += 0.4;
+        plantdensity[i - 257] += 0.4;
+    }
+  }
+
+  //Loop over all Trees
+  for(int i = 0; i < trees.size(); i++){
+
+    //Grow the Tree
+    trees[i].grow();
+
+    //Spawn a new Tree!
+    if(rand()%100 == 0){
+      //Find New Position
+      glm::vec2 npos = trees[i].pos + glm::vec2(rand()%9-4, rand()%9-4);
+
+      //Check for Out-Of-Bounds
+      if( npos.x >= 0 && npos.x < dim.x &&
+          npos.y >= 0 && npos.y < dim.y ){
+
+        Plant ntree(npos, dim);
+        glm::vec3 n = surfaceNormal(ntree.index, heightmap, dim, scale);
+
+        if( waterpool[ntree.index] == 0.0 &&
+            waterpath[ntree.index] < 0.2 &&
+            n.y > 0.8 &&
+            (double)(rand()%1000)/1000.0 > plantdensity[ntree.index]){
+              //Add Tree
+              trees.push_back(ntree);
+
+              //Raise Plant Density
+              plantdensity[ntree.index] += 1.0;
+              plantdensity[ntree.index + 1] += 0.6;
+              plantdensity[ntree.index - 1] += 0.6;
+              plantdensity[ntree.index + 256] += 0.6;
+              plantdensity[ntree.index - 256] += 0.6;
+              plantdensity[ntree.index + 255] += 0.4;
+              plantdensity[ntree.index - 255] += 0.4;
+              plantdensity[ntree.index + 257] += 0.4;
+              plantdensity[ntree.index - 257] += 0.4;
+            }
+      }
+    }
+
+    //If the tree is in a pool or in a stream, kill it
+    if(waterpool[trees[i].index] > 0.0 ||
+       waterpath[trees[i].index] > 0.2 ||
+       rand()%5000 == 0 ){ //Random Death Chance
+         plantdensity[trees[i].index] -= 1.0;
+         plantdensity[trees[i].index + 1] -= 0.6;
+         plantdensity[trees[i].index - 1] -= 0.6;
+         plantdensity[trees[i].index + 256] -= 0.6;
+         plantdensity[trees[i].index - 256] -= 0.6;
+         plantdensity[trees[i].index + 255] -= 0.4;
+         plantdensity[trees[i].index - 255] -= 0.4;
+         plantdensity[trees[i].index + 257] -= 0.4;
+         plantdensity[trees[i].index - 257] -= 0.4;
+
+         trees.erase(trees.begin()+i);
+         i--;
+       }
+  }
+
+};
+
 /*
 ===================================================
-                MESHING FUNCTION
+                RENDERING STUFF
 ===================================================
 */
+
+World world;
 
 int WIDTH = 1000;
 int HEIGHT = 1000;
@@ -111,6 +207,8 @@ glm::vec3 cameraPos = glm::vec3(50, 50, 50);
 glm::vec3 lookPos = glm::vec3(0, 0, 0);
 glm::mat4 camera = glm::lookAt(cameraPos, lookPos, glm::vec3(0,1,0));
 glm::mat4 projection = glm::ortho(-(float)WIDTH*zoom, (float)WIDTH*zoom, -(float)HEIGHT*zoom, (float)HEIGHT*zoom, -800.0f, 500.0f);
+
+glm::vec3 viewPos = glm::vec3(128.0, world.scale/2.0, 128.0);
 
 //Shader Stuff
 float steepness = 0.8;
@@ -137,8 +235,6 @@ glm::mat4 biasMatrix = glm::mat4(
     0.5, 0.5, 0.5, 1.0
 );
 
-World world;
-
 std::function<void(Model* m)> constructor = [&](Model* m){
   //Clear the Containers
   m->indices.clear();
@@ -159,8 +255,16 @@ std::function<void(Model* m)> constructor = [&](Model* m){
       glm::vec3 c = glm::vec3(i, world.scale*world.heightmap[ind+1], j+1);
       glm::vec3 d = glm::vec3(i+1, world.scale*world.heightmap[ind+world.dim.y+1], j+1);
 
+      //Check if the Surface is Water
+      bool water1 = (world.waterpool[ind] > 0.0 &&
+                     world.waterpool[ind+world.dim.y] > 0.0 &&
+                     world.waterpool[ind+1] > 0.0);
+
+      bool water2 = (world.waterpool[ind+world.dim.y] > 0.0 &&
+                     world.waterpool[ind+1] > 0.0 &&
+                     world.waterpool[ind+world.dim.y+1] > 0.0);
+
       //Add the Pool Height
-      bool water = (world.waterpool[ind] > 0.0);
       a += glm::vec3(0.0, world.scale*world.waterpool[ind], 0.0);
       b += glm::vec3(0.0, world.scale*world.waterpool[ind+world.dim.y], 0.0);
       c += glm::vec3(0.0, world.scale*world.waterpool[ind+1], 0.0);
@@ -170,8 +274,10 @@ std::function<void(Model* m)> constructor = [&](Model* m){
 
       //Get the Color of the Ground (Water vs. Flat)
       glm::vec3 color;
-      float p = world.waterpath[ind];
-      if(water) color = waterColor;
+      double p = world.waterpath[ind];
+
+      //See if we are water or not!
+      if(water1) color = waterColor;
       else color = glm::mix(flatColor, waterColor, p);
 
       //Add Indices
@@ -197,7 +303,7 @@ std::function<void(Model* m)> constructor = [&](Model* m){
         m->normals.push_back(n1.z);
 
         //Add the Color!
-        if(n1.y < steepness && !water){
+        if(n1.y < steepness && !water1){
           m->colors.push_back(steepColor.x);
           m->colors.push_back(steepColor.y);
           m->colors.push_back(steepColor.z);
@@ -213,6 +319,8 @@ std::function<void(Model* m)> constructor = [&](Model* m){
       }
 
       //Lower Triangle
+      if(water2) color = waterColor;
+      else color = glm::mix(flatColor, waterColor, p);
 
       m->indices.push_back(m->positions.size()/3+0);
       m->indices.push_back(m->positions.size()/3+1);
@@ -235,7 +343,7 @@ std::function<void(Model* m)> constructor = [&](Model* m){
         m->normals.push_back(n2.y);
         m->normals.push_back(n2.z);
 
-        if(n2.y < steepness && !water){
+        if(n2.y < steepness && !water2){
           m->colors.push_back(steepColor.x);
           m->colors.push_back(steepColor.y);
           m->colors.push_back(steepColor.z);
@@ -289,6 +397,30 @@ std::function<void()> eventHandler = [&](){
 
     if(Tiny::event.keys.back().key.keysym.sym == SDLK_ESCAPE){
       viewmap = !viewmap;
+    }
+
+    if(Tiny::event.keys.back().key.keysym.sym == SDLK_SPACE){
+      viewPos += glm::vec3(0.0, 1.0, 0.0);
+    }
+
+    if(Tiny::event.keys.back().key.keysym.sym == SDLK_c){
+      viewPos -= glm::vec3(0.0, 1.0, 0.0);
+    }
+
+    if(Tiny::event.keys.back().key.keysym.sym == SDLK_w){
+      viewPos -= glm::vec3(1.0, 0.0, 0.0);
+    }
+
+    if(Tiny::event.keys.back().key.keysym.sym == SDLK_a){
+      viewPos += glm::vec3(0.0, 0.0, 1.0);
+    }
+
+    if(Tiny::event.keys.back().key.keysym.sym == SDLK_s){
+      viewPos += glm::vec3(1.0, 0.0, 0.0);
+    }
+
+    if(Tiny::event.keys.back().key.keysym.sym == SDLK_d){
+      viewPos -= glm::vec3(0.0, 0.0, 1.0);
     }
 
     if(Tiny::event.keys.back().key.keysym.sym == SDLK_UP){

@@ -25,6 +25,7 @@ using slist = std::initializer_list<std::string>;
 #include <boost/filesystem/path.hpp>
 
 //Helpers
+#include "include/helpers/helper.h"
 #include "include/helpers/ease.h"
 #include "include/helpers/color.h"
 #include "include/helpers/draw.h"

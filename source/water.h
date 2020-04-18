@@ -13,20 +13,20 @@ struct Drop{
   int index;
   glm::vec2 pos;
   glm::vec2 speed = glm::vec2(0.0);
-  float volume = 1.0;   //This will vary in time
-  float sediment = 0.0; //Fraction of Volume that is Sediment!
+  double volume = 1.0;   //This will vary in time
+  double sediment = 0.0; //Fraction of Volume that is Sediment!
 
   //Parameters
   const float dt = 1.2;
-  const float density = 1.0;  //This gives varying amounts of inertia and stuff...
-  const float evapRate = 0.001;
-  const float depositionRate = 0.1;
-  const float minVol = 0.01;
-  const float friction = 0.1;
-  const float volumeFactor = 100.0; //"Water Deposition Rate"
+  const double density = 1.0;  //This gives varying amounts of inertia and stuff...
+  const double evapRate = 0.001;
+  const double depositionRate = 0.1;
+  const double minVol = 0.01;
+  const double friction = 0.1;
+  const double volumeFactor = 100.0; //"Water Deposition Rate"
 
   //Sedimenation Process
-  void process(double* h, double* path, double* pool, bool* track, glm::ivec2 dim, double scale);
+  void process(double* h, double* path, double* pool, bool* track, double* pd, glm::ivec2 dim, double scale);
   void flood(double* h, double* pool, glm::ivec2 dim);
 };
 
@@ -44,7 +44,7 @@ glm::vec3 surfaceNormal(int index, double* h, glm::ivec2 dim, double scale){
   return n;
 }
 
-void Drop::process(double* h, double* p, double* b, bool* track, glm::ivec2 dim, double scale){
+void Drop::process(double* h, double* p, double* b, bool* track, double* pd, glm::ivec2 dim, double scale){
 
   glm::ivec2 ipos;
 
@@ -60,14 +60,16 @@ void Drop::process(double* h, double* p, double* b, bool* track, glm::ivec2 dim,
     glm::vec3 n = surfaceNormal(ind, h, dim, scale);
 
     //Effective Parameter Set
-    float effD = depositionRate;
-    /*Lower Friction, Lower Evaporation in Streams
-    makes particles prefer established streams -> "curvy"*/
-    float effF = friction*(1.0-0.5*p[ind]);
-    float effR = evapRate*(1.0-0.2*p[ind]);
+    /* Higher plant density means less erosion */
+    double effD = depositionRate*max(0.0, 1.0-pd[ind]);
+
+    /* Lower Friction, Lower Evaporation in Streams
+    makes particles prefer established streams -> "curvy" */
+    double effF = friction*(1.0-0.5*p[ind]);
+    double effR = evapRate*(1.0-0.2*p[ind]);
 
     //Newtonian Mechanics
-    glm::vec2 acc = glm::vec2(n.x, n.z)/(volume*density);
+    glm::vec2 acc = glm::vec2(n.x, n.z)/(float)(volume*density);
     speed += dt*acc;
     pos   += dt*speed;
     speed *= (1.0-dt*effF);
@@ -91,11 +93,11 @@ void Drop::process(double* h, double* p, double* b, bool* track, glm::ivec2 dim,
       break;
 
     //Mass-Transfer
-    float c_eq = volume*glm::length(speed)*(h[ind]-h[nind]);
+    double c_eq = volume*glm::length(speed)*(h[ind]-h[nind]);
     if(c_eq < 0.0) c_eq = 0.0;
-    float cdiff = c_eq - sediment;
+    double cdiff = c_eq - sediment;
     sediment += dt*effD*cdiff;
-    h[ind] -= dt*volume*effD*cdiff;
+    h[ind] -= volume*dt*effD*cdiff;
 
     //Evaporate
     volume *= (1.0-dt*effR);
@@ -195,7 +197,7 @@ void Drop::flood(double* h, double* p, glm::ivec2 dim){
       pos = glm::vec2(drain/dim.y, drain%dim.y);
 
       //Set the New Waterlevel (Slowly)
-      float drainage = 0.001;
+      double drainage = 0.001;
       plane = (1.0-drainage)*initialplane + drainage*(h[drain] + p[drain]);
 
       //Compute the New Height
@@ -203,7 +205,7 @@ void Drop::flood(double* h, double* p, glm::ivec2 dim){
         p[s] = (plane > h[s])?(plane-h[s]):0.0;
 
       //Remove Sediment
-      sediment = 0.0;
+      sediment *= 0.1;
       break;
     }
 
@@ -229,7 +231,7 @@ void Drop::flood(double* h, double* p, glm::ivec2 dim){
 
     //Adjust Planes
     initialplane = (plane > initialplane)?plane:initialplane;
-    plane += 0.5*(volume-tVol)/(float)set.size()/volumeFactor;
+    plane += 0.5*(volume-tVol)/(double)set.size()/volumeFactor;
   }
 
   //Couldn't place the volume (for some reason)- so ignore this drop.

@@ -20,10 +20,10 @@ public:
   void cleanup();
 
   //Vertex and Texture Positions
-  const GLfloat vert[8] = {-1.0, -1.0,
-                           -1.0,  1.0,
-                            1.0, -1.0,
-                            1.0,  1.0};
+  const GLfloat vert[12] = {-1.0, -1.0,  0.0,
+                           -1.0,  1.0,  0.0,
+                            1.0, -1.0,  0.0,
+                            1.0,  1.0,  0.0};
 
   const GLfloat tex[8]  = { 0.0,  1.0,
                             0.0,  0.0,
@@ -31,6 +31,7 @@ public:
                             1.0,  0.0};
 
   //Rendering Position
+  glm::vec3 pos = glm::vec3(0.0);
   glm::mat4 model = glm::mat4(1.0f);                  //Model Matrix
   void move(glm::vec2 pos, glm::vec2 scale);
 
@@ -46,9 +47,9 @@ void Sprite::setup(){
   //Setup the VBOs
   glGenBuffers(2, &vbo[0]);
   glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
-  glBufferData(GL_ARRAY_BUFFER, 8*sizeof(GLfloat), &vert[0], GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, 12*sizeof(GLfloat), &vert[0], GL_STATIC_DRAW);
   glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
   glBindBuffer(GL_ARRAY_BUFFER, vbo[1]);
   glBufferData(GL_ARRAY_BUFFER, 8*sizeof(GLfloat), &tex[0], GL_STATIC_DRAW);
@@ -67,10 +68,11 @@ void Sprite::cleanup(){
   glDeleteVertexArrays(1, &vao);
 }
 
+/*
 void Sprite::move(glm::vec2 pos, glm::vec2 scale){
   model = glm::translate(glm::mat4(1.0), glm::vec3(2.0*pos.x-1.0+scale.x, 2.0*pos.y-1.0+scale.y, 0.0));
   model = glm::scale(model, glm::vec3(scale.x, scale.y, 1.0));
-}
+}*/
 
 /*
 ================================================================================
