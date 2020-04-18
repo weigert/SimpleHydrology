@@ -22,7 +22,7 @@ struct Drop{
   const double evapRate = 0.001;
   const double depositionRate = 0.1;
   const double minVol = 0.01;
-  const double friction = 0.1;
+  const double friction = 0.15;
   const double volumeFactor = 100.0; //"Water Deposition Rate"
 
   //Sedimenation Process
@@ -92,9 +92,8 @@ void Drop::process(double* h, double* p, double* b, bool* track, double* pd, glm
     if(b[nind] > 0.0)
       break;
 
-    //Mass-Transfer
-    double c_eq = volume*glm::length(speed)*(h[ind]-h[nind]);
-    if(c_eq < 0.0) c_eq = 0.0;
+    //Mass-Transfer (in MASS)
+    double c_eq = max(0.0, glm::length(speed)*(h[ind]-h[nind]));
     double cdiff = c_eq - sediment;
     sediment += dt*effD*cdiff;
     h[ind] -= volume*dt*effD*cdiff;

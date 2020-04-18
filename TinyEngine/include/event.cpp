@@ -46,13 +46,6 @@ void Event::input(){
        return;
   }
 
-  if(in.type == SDL_MOUSEBUTTONDOWN ||
-     in.type == SDL_MOUSEBUTTONUP){
-       moveEvent = in;
-       moveEventTrigger = true;
-       return;
-  }
-
   if(in.type == SDL_WINDOWEVENT){
     windowEvent = in;
     windowEventTrigger = true;

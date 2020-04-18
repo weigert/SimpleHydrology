@@ -10,6 +10,8 @@ public:
 
 //  int SEED = 1587100265;
   int SEED = 1587179400;
+  //int SEED = 1587182922;
+  //int SEED = 1587218275;
   glm::ivec2 dim = glm::vec2(256, 256);  //Size of the heightmap array
 
   double scale = 60.0;                  //"Physical" Height scaling of the map
@@ -101,7 +103,7 @@ void World::erode(int cycles){
 void World::grow(){
 
   //Random Position
-  if(rand()%2 == 0){
+  {
     int i = rand()%(dim.x*dim.y);
     glm::vec3 n = surfaceNormal(i, heightmap, dim, scale);
 
@@ -109,19 +111,9 @@ void World::grow(){
         waterpath[i] < 0.2 &&
         n.y > 0.8 ){
 
-        Plant newtree(i, dim);
-        trees.push_back(newtree);
-
-        //Raise Plant Density
-        plantdensity[i] += 1.0;
-        plantdensity[i + 1] += 0.6;
-        plantdensity[i - 1] += 0.6;
-        plantdensity[i + 256] += 0.6;
-        plantdensity[i - 256] += 0.6;
-        plantdensity[i + 255] += 0.4;
-        plantdensity[i - 255] += 0.4;
-        plantdensity[i + 257] += 0.4;
-        plantdensity[i - 257] += 0.4;
+        Plant ntree(i, dim);
+        ntree.root(plantdensity, dim, 1.0);
+        trees.push_back(ntree);
     }
   }
 
@@ -147,19 +139,8 @@ void World::grow(){
             waterpath[ntree.index] < 0.2 &&
             n.y > 0.8 &&
             (double)(rand()%1000)/1000.0 > plantdensity[ntree.index]){
-              //Add Tree
+              ntree.root(plantdensity, dim, 1.0);
               trees.push_back(ntree);
-
-              //Raise Plant Density
-              plantdensity[ntree.index] += 1.0;
-              plantdensity[ntree.index + 1] += 0.6;
-              plantdensity[ntree.index - 1] += 0.6;
-              plantdensity[ntree.index + 256] += 0.6;
-              plantdensity[ntree.index - 256] += 0.6;
-              plantdensity[ntree.index + 255] += 0.4;
-              plantdensity[ntree.index - 255] += 0.4;
-              plantdensity[ntree.index + 257] += 0.4;
-              plantdensity[ntree.index - 257] += 0.4;
             }
       }
     }
@@ -167,17 +148,8 @@ void World::grow(){
     //If the tree is in a pool or in a stream, kill it
     if(waterpool[trees[i].index] > 0.0 ||
        waterpath[trees[i].index] > 0.2 ||
-       rand()%5000 == 0 ){ //Random Death Chance
-         plantdensity[trees[i].index] -= 1.0;
-         plantdensity[trees[i].index + 1] -= 0.6;
-         plantdensity[trees[i].index - 1] -= 0.6;
-         plantdensity[trees[i].index + 256] -= 0.6;
-         plantdensity[trees[i].index - 256] -= 0.6;
-         plantdensity[trees[i].index + 255] -= 0.4;
-         plantdensity[trees[i].index - 255] -= 0.4;
-         plantdensity[trees[i].index + 257] -= 0.4;
-         plantdensity[trees[i].index - 257] -= 0.4;
-
+       rand()%1000 == 0 ){ //Random Death Chance
+         trees[i].root(plantdensity, dim, -1.0);
          trees.erase(trees.begin()+i);
          i--;
        }
@@ -199,7 +171,7 @@ int HEIGHT = 1000;
 bool paused = true;
 
 float zoom = 0.2;
-float zoomInc = 0.01;
+float zoomInc = 0.005;
 
 //Rotation and View
 float rotation = 0.0f;
@@ -212,14 +184,13 @@ glm::vec3 viewPos = glm::vec3(128.0, world.scale/2.0, 128.0);
 
 //Shader Stuff
 float steepness = 0.8;
-glm::vec3 flatColor = glm::vec3(0.27, 0.64, 0.27);
+//glm::vec3 flatColor = glm::vec3(0.25, 0.60, 0.44);
+glm::vec3 flatColor = glm::vec3(0.40, 0.60, 0.25);
+glm::vec3 waterColor = glm::vec3(0.17, 0.40, 0.44);
 glm::vec3 steepColor = glm::vec3(0.7);
-//glm::vec3 flatColor = glm::vec3(1.0, 0.709, 0.329);
-//glm::vec3 steepColor = glm::vec3(0.847, 0.714, 0.592);
-glm::vec3 waterColor = glm::vec3(0.086, 0.435, 0.494);
 
 //Lighting and Shading
-glm::vec3 skyCol = glm::vec4(0.3, 0.3f, 1.0f, 1.0f);
+glm::vec3 skyCol = glm::vec4(0.64, 0.75, 0.75, 1.0f);
 glm::vec3 lightPos = glm::vec3(-100.0f, 100.0f, -150.0f);
 glm::vec3 lightCol = glm::vec3(1.0f, 1.0f, 0.9f);
 float lightStrength = 1.4;
@@ -366,11 +337,11 @@ std::function<void()> eventHandler = [&](){
   if(!Tiny::event.scroll.empty()){
 
     if(Tiny::event.scroll.back().wheel.y > 0.99 && zoom <= 0.3){
-      zoom += zoomInc;
+      zoom /= 0.975;
       projection = glm::ortho(-(float)WIDTH*zoom, (float)WIDTH*zoom, -(float)HEIGHT*zoom, (float)HEIGHT*zoom, -800.0f, 500.0f);
     }
     else if(Tiny::event.scroll.back().wheel.y < -0.99 && zoom > 0.005){
-      zoom -= zoomInc;
+      zoom *= 0.975;
       projection = glm::ortho(-(float)WIDTH*zoom, (float)WIDTH*zoom, -(float)HEIGHT*zoom, (float)HEIGHT*zoom, -800.0f, 500.0f);
     }
     else if(Tiny::event.scroll.back().wheel.x < -0.8){

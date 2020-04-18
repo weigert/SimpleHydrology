@@ -33,7 +33,7 @@ float gridSample(int size){
       }
   }
   //Normalize
-  shadow/=((2*size+1)*(2*size+1)*2.0);
+  shadow/=12.0;
   return shadow;
 }
 
@@ -44,7 +44,7 @@ vec4 shade(){
       shadow = gridSample(1);
 
     //Sample the Shadow Value from Texture
-    return vec4(vec3(1-shadow), 1.0f);
+    return vec4(vec3(1.0-shadow), 1.0f);
 }
 
 vec4 phong(){
