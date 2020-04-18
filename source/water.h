@@ -1,5 +1,3 @@
-//FLOW PARTICLE
-
 struct Drop{
   //Construct Particle at Position
   Drop(glm::vec2 _pos){ pos = _pos; }
@@ -26,7 +24,7 @@ struct Drop{
   const double volumeFactor = 100.0; //"Water Deposition Rate"
 
   //Sedimenation Process
-  void process(double* h, double* path, double* pool, bool* track, double* pd, glm::ivec2 dim, double scale);
+  void descend(double* h, double* path, double* pool, bool* track, double* pd, glm::ivec2 dim, double scale);
   void flood(double* h, double* pool, glm::ivec2 dim);
 };
 
@@ -44,7 +42,7 @@ glm::vec3 surfaceNormal(int index, double* h, glm::ivec2 dim, double scale){
   return n;
 }
 
-void Drop::process(double* h, double* p, double* b, bool* track, double* pd, glm::ivec2 dim, double scale){
+void Drop::descend(double* h, double* p, double* b, bool* track, double* pd, glm::ivec2 dim, double scale){
 
   glm::ivec2 ipos;
 
@@ -102,29 +100,6 @@ void Drop::process(double* h, double* p, double* b, bool* track, double* pd, glm
     volume *= (1.0-dt*effR);
   }
 };
-
-/*
-  A point that is below the testing plane is part of the fill.
-  A point that is ALSO below the initial plane is a drainage spot.
-
-  If we find a drainage spot:
-    Don't add it to the set, don't test it's neighbors.
-    It is now marked as "tested". This way we don't flood beyond this spot.
-    Mark it as a drainage spot.
-    Continue filling the other areas into the set.
-
-  Once all drains are identified:
-
-  If we still have more particle volume than the test-volume:
-    Set the plane to the height of the lowest drain.
-    Compute the volume that can be added to the set, subtract it.
-    Place the rest as particles at the location of the drain.
-
-  Important:
-    The initial Plane is nudged upwards correctly after every iteration
-    And it doesn't matter if the droplet position has water or not
-    in order to identify a neighboring drain spot.
-*/
 
 void Drop::flood(double* h, double* p, glm::ivec2 dim){
 

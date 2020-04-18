@@ -19,8 +19,8 @@ int main( int argc, char* args[] ) {
   Shader spritedepth("source/shader/spritedepth.vs", "source/shader/spritedepth.fs", {"in_Quad", "in_Tex"});
 
   //Sprite
-  Sprite tree(image::load("Tree.png"));
-  Texture treenormal(image::load("TreeNormal.png"));
+  Sprite tree(image::load("resource/Tree.png"));
+  Texture treenormal(image::load("resource/TreeNormal.png"));
 
   //Setup Rendering Billboards
   Billboard shadow(2000, 2000, true); //800x800, depth only

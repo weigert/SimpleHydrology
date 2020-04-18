@@ -36,7 +36,8 @@ public:
 
 void World::generate(){
   std::cout<<"Generating New World"<<std::endl;
-  //SEED = time(NULL);
+  SEED = time(NULL);
+
   std::cout<<"Seed: "<<SEED<<std::endl;
   //Seed the Random Generator
   srand(SEED);
@@ -49,7 +50,7 @@ void World::generate(){
   //Mountainy:
   perlin.SetOctaveCount(8);
   perlin.SetFrequency(1.0);
-  perlin.SetPersistence(0.4);
+  perlin.SetPersistence(0.6);
 
   double min, max = 0.0;
   for(int i = 0; i < dim.x*dim.y; i++){
@@ -84,7 +85,7 @@ void World::erode(int cycles){
     int spill = 5;
     while(drop.volume > drop.minVol && spill != 0){
 
-      drop.process(heightmap, waterpath, waterpool, track, plantdensity, dim, scale);
+      drop.descend(heightmap, waterpath, waterpool, track, plantdensity, dim, scale);
 
       if(drop.volume > drop.minVol)
         drop.flood(heightmap, waterpool, dim);
