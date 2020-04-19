@@ -1,5 +1,5 @@
-# ProcRiver
-C++ implementation of a particle based hydrology system for terrain generation. This extends simple particle based hydraulic erosion to capture streams and pools.
+# SimpleHydrology
+C++ implementation of a particle based procedural hydrology system for terrain generation. This extends simple particle based hydraulic erosion to capture streams and pools.
 
 Rendered using my homebrew [TinyEngine](https://github.com/weigert/TinyEngine).
 
