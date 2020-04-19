@@ -5,6 +5,8 @@ Rendered using my homebrew [TinyEngine](https://github.com/weigert/TinyEngine).
 
 [Link to a blog post about this](https://weigert.vsos.ethz.ch/2020/04/15/procedural-hydrology/)
 
+![Banner Image](https://weigert.vsos.ethz.ch/wp-content/uploads/2020/04/Banner.png)
+
 ## Compiling
 
 Use the makefile to compile the program.
