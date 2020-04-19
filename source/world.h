@@ -8,10 +8,7 @@ public:
   void erode(int cycles);               //Erode with N Particles
   void grow();
 
-//  int SEED = 1587100265;
-  int SEED = 1587179400;
-  //int SEED = 1587182922;
-  //int SEED = 1587218275;
+  int SEED = 0;
   glm::ivec2 dim = glm::vec2(256, 256);  //Size of the heightmap array
 
   double scale = 60.0;                  //"Physical" Height scaling of the map
@@ -36,7 +33,7 @@ public:
 
 void World::generate(){
   std::cout<<"Generating New World"<<std::endl;
-  SEED = time(NULL);
+  if(SEED == 0) SEED = time(NULL);
 
   std::cout<<"Seed: "<<SEED<<std::endl;
   //Seed the Random Generator
@@ -50,7 +47,7 @@ void World::generate(){
   //Mountainy:
   perlin.SetOctaveCount(8);
   perlin.SetFrequency(1.0);
-  perlin.SetPersistence(0.6);
+  perlin.SetPersistence(0.5);
 
   double min, max = 0.0;
   for(int i = 0; i < dim.x*dim.y; i++){
@@ -185,13 +182,14 @@ glm::vec3 viewPos = glm::vec3(128.0, world.scale/2.0, 128.0);
 
 //Shader Stuff
 float steepness = 0.8;
-//glm::vec3 flatColor = glm::vec3(0.25, 0.60, 0.44);
 glm::vec3 flatColor = glm::vec3(0.40, 0.60, 0.25);
 glm::vec3 waterColor = glm::vec3(0.17, 0.40, 0.44);
 glm::vec3 steepColor = glm::vec3(0.7);
+//glm::vec3 steepColor = glm::vec3(0.78, 0.6, 0.168);
+//glm::vec3 flatColor = glm::vec3(0.84, 0.65, 0.36);
 
 //Lighting and Shading
-glm::vec3 skyCol = glm::vec4(0.64, 0.75, 0.75, 1.0f);
+glm::vec3 skyCol = glm::vec4(0.64, 0.75, 0.9, 1.0f);
 glm::vec3 lightPos = glm::vec3(-100.0f, 100.0f, -150.0f);
 glm::vec3 lightCol = glm::vec3(1.0f, 1.0f, 0.9f);
 float lightStrength = 1.4;

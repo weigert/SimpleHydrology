@@ -4,6 +4,9 @@
 
 int main( int argc, char* args[] ) {
 
+  if(argc == 2)
+    world.SEED = std::stoi(args[1]);
+
   //Generate the World
   world.generate();
 
@@ -134,17 +137,19 @@ int main( int argc, char* args[] ) {
     image.render();                     //Render Image
 
     //Render Additional Information
+
     if(viewmap){
 
       billboard.use();
       glActiveTexture(GL_TEXTURE0+0);
 
       glBindTexture(GL_TEXTURE_2D, map.texture);
-      map.move(glm::vec2(0.0, 0.8), glm::vec2(0.2));
+      map.move(glm::vec2(0.0, 0.0), glm::vec2(1.0));
       billboard.setMat4("model", map.model);
       map.render();
 
     }
+
   };
 
   //Define a World Mesher?
