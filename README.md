@@ -40,7 +40,14 @@ If no seed is specified, it will take a random one.
     - Move the Camera Anchor: WASD / SPACE / C
 
 ### Screenshots
+![Example Output](https://weigert.vsos.ethz.ch/wp-content/uploads/2020/04/hydrology.png)
+Example output when simulating on semi-rugged terrain.
 
+![Hydrology Map](https://weigert.vsos.ethz.ch/wp-content/uploads/2020/04/HydroMap-1.png)
+Example of a generated hydrology map.
+
+![Terrain Render](https://weigert.vsos.ethz.ch/wp-content/uploads/2020/04/HeightMap.png)
+Corresponding rendering of the terrain.
 
 
 ## Reading
