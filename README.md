@@ -3,7 +3,7 @@ C++ implementation of a particle based procedural hydrology system for terrain g
 
 Rendered using my homebrew [TinyEngine](https://github.com/weigert/TinyEngine).
 
-[Link to a blog pos about this](https://weigert.vsos.ethz.ch/2020/04/15/procedural-hydrology/)
+[Link to a blog post about this](https://weigert.vsos.ethz.ch/2020/04/15/procedural-hydrology/)
 
 ## Compiling
 
