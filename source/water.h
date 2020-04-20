@@ -29,10 +29,9 @@ struct Drop{
 };
 
 glm::vec3 surfaceNormal(int index, double* h, glm::ivec2 dim, double scale){
-  glm::vec3 n = glm::vec3(0.0);
 
   //Two large triangels adjacent to the plane (+Y -> +X) (-Y -> -X)
-  n += glm::cross(glm::vec3(0.0, scale*(h[index+1]-h[index]), 1.0), glm::vec3(1.0, scale*(h[index+dim.y]-h[index]), 0.0));
+  glm::vec3 n = glm::cross(glm::vec3(0.0, scale*(h[index+1]-h[index]), 1.0), glm::vec3(1.0, scale*(h[index+dim.y]-h[index]), 0.0));
   n += glm::cross(glm::vec3(0.0, scale*(h[index-1]-h[index]), -1.0), glm::vec3(-1.0, scale*(h[index-dim.y]-h[index]), 0.0));
 
   //Two Alternative Planes (+X -> -Y) (-X -> +Y)
@@ -92,7 +91,7 @@ void Drop::descend(double* h, double* p, double* b, bool* track, double* pd, glm
        }
 
     //Particle is not accelerated
-    if(p[nind] > 0.5 && length(acc) < 0.01)
+    if(p[nind] > 0.3 && length(acc) < 0.01)
       break;
 
     //Particle enters Pool
@@ -105,7 +104,8 @@ void Drop::descend(double* h, double* p, double* b, bool* track, double* pd, glm
     sediment += dt*effD*cdiff;
     h[ind] -= volume*dt*effD*cdiff;
 
-    //Evaporate
+    //Evaporate (Mass Conservative)
+    sediment /= (1.0-dt*effR);
     volume *= (1.0-dt*effR);
   }
 };
@@ -125,7 +125,8 @@ void Drop::flood(double* h, double* p, glm::ivec2 dim){
   while(volume > minVol && fail){
 
     set.clear();
-    bool tried[dim.x*dim.y] = {false};
+    int size = dim.x*dim.y;
+    bool tried[size] = {false};
 
     int drain;
     bool drainfound = false;
@@ -133,8 +134,7 @@ void Drop::flood(double* h, double* p, glm::ivec2 dim){
     std::function<void(int)> fill = [&](int i){
 
       //Out of Bounds
-      if(i/dim.y >= dim.x || i/dim.y < 0) return;
-      if(i%dim.y >= dim.y || i%dim.y < 0) return;
+      if(i < 0 || i >= size) return;
 
       //Position has been tried
       if(tried[i]) return;
