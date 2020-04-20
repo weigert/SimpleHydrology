@@ -11,7 +11,7 @@ public:
   int SEED = 0;
   glm::ivec2 dim = glm::vec2(256, 256);  //Size of the heightmap array
 
-  double scale = 60.0;                  //"Physical" Height scaling of the map
+  double scale = 40.0;                  //"Physical" Height scaling of the map
   double heightmap[256*256] = {0.0};    //Flat Array
 
   double waterpath[256*256] = {0.0};    //Water Path Storage (Rivers)
@@ -47,7 +47,7 @@ void World::generate(){
   //Mountainy:
   perlin.SetOctaveCount(8);
   perlin.SetFrequency(1.0);
-  perlin.SetPersistence(0.5);
+  perlin.SetPersistence(0.4);
 
   double min, max = 0.0;
   for(int i = 0; i < dim.x*dim.y; i++){
@@ -122,7 +122,7 @@ void World::grow(){
     trees[i].grow();
 
     //Spawn a new Tree!
-    if(rand()%100 == 0){
+    if(rand()%50 == 0){
       //Find New Position
       glm::vec2 npos = trees[i].pos + glm::vec2(rand()%9-4, rand()%9-4);
 

@@ -144,7 +144,7 @@ int main( int argc, char* args[] ) {
       glActiveTexture(GL_TEXTURE0+0);
 
       glBindTexture(GL_TEXTURE_2D, map.texture);
-      map.move(glm::vec2(0.0, 0.0), glm::vec2(1.0));
+      map.move(glm::vec2(0.0, 0.8), glm::vec2(0.2));
       billboard.setMat4("model", map.model);
       map.render();
 

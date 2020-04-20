@@ -29,17 +29,26 @@ struct Drop{
 };
 
 glm::vec3 surfaceNormal(int index, double* h, glm::ivec2 dim, double scale){
-  glm::vec3 n = glm::vec3(0.15) * glm::normalize(glm::vec3(scale*(h[index]-h[index+dim.y]), 1.0, 0.0));  //Positive X
-  n += glm::vec3(0.15) * glm::normalize(glm::vec3(scale*(h[index-dim.y]-h[index]), 1.0, 0.0));  //Negative X
-  n += glm::vec3(0.15) * glm::normalize(glm::vec3(0.0, 1.0, scale*(h[index]-h[index+1])));    //Positive Y
-  n += glm::vec3(0.15) * glm::normalize(glm::vec3(0.0, 1.0, scale*(h[index-1]-h[index])));  //Negative Y
+  glm::vec3 n = glm::vec3(0.0);
 
-  //Diagonals! (This removes the last spatial artifacts)
-  n += glm::vec3(0.1) * glm::normalize(glm::vec3(scale*(h[index]-h[index+dim.y+1])/sqrt(2), sqrt(2), scale*(h[index]-h[index+dim.y+1])/sqrt(2)));    //Positive Y
-  n += glm::vec3(0.1) * glm::normalize(glm::vec3(scale*(h[index]-h[index+dim.y-1])/sqrt(2), sqrt(2), scale*(h[index]-h[index+dim.y-1])/sqrt(2)));    //Positive Y
-  n += glm::vec3(0.1) * glm::normalize(glm::vec3(scale*(h[index]-h[index-dim.y+1])/sqrt(2), sqrt(2), scale*(h[index]-h[index-dim.y+1])/sqrt(2)));    //Positive Y
-  n += glm::vec3(0.1) * glm::normalize(glm::vec3(scale*(h[index]-h[index-dim.y-1])/sqrt(2), sqrt(2), scale*(h[index]-h[index-dim.y-1])/sqrt(2)));    //Positive Y
-  return n;
+  //Two large triangels adjacent to the plane (+Y -> +X) (-Y -> -X)
+  n += glm::cross(glm::vec3(0.0, scale*(h[index+1]-h[index]), 1.0), glm::vec3(1.0, scale*(h[index+dim.y]-h[index]), 0.0));
+  n += glm::cross(glm::vec3(0.0, scale*(h[index-1]-h[index]), -1.0), glm::vec3(-1.0, scale*(h[index-dim.y]-h[index]), 0.0));
+
+  //Two Alternative Planes (+X -> -Y) (-X -> +Y)
+  n += glm::cross(glm::vec3(1.0, scale*(h[index+dim.y]-h[index]), 0.0), glm::vec3(0.0, scale*(h[index-1]-h[index]), -1.0));
+  n += glm::cross(glm::vec3(-1.0, scale*(h[index-dim.y]-h[index]), 0.0), glm::vec3(0.0, scale*(h[index+1]-h[index]), 1.0));
+
+/*
+  //Diagonal Planes Instead... (split the two above into two planes) This is more like what the grid actually looks like
+  n += glm::cross(glm::vec3(1.0, scale*(h[index+dim.y]-h[index]), 0.0), glm::vec3(1.0, scale*(h[index+dim.y-1]-h[index]), -1.0));
+  n += glm::cross(glm::vec3(1.0, scale*(h[index+dim.y-1]-h[index]), -1.0), glm::vec3(0.0, scale*(h[index-1]-h[index]), -1.0));
+
+  n += glm::cross(glm::vec3(-1.0, scale*(h[index-dim.y]-h[index]), 0.0), glm::vec3(-1.0, scale*(h[index-dim.y+1]-h[index]), 1.0));
+  n += glm::cross(glm::vec3(-1.0, scale*(h[index-dim.y+1]-h[index]), 1.0), glm::vec3(0.0, scale*(h[index+1]-h[index]), 1.0));
+*/
+
+  return glm::normalize(n);
 }
 
 void Drop::descend(double* h, double* p, double* b, bool* track, double* pd, glm::ivec2 dim, double scale){
@@ -73,7 +82,7 @@ void Drop::descend(double* h, double* p, double* b, bool* track, double* pd, glm
     speed *= (1.0-dt*effF);
 
     //New Position
-    int nind = (int)(pos.x)*dim.y+(int)(pos.y);
+    int nind = (int)pos.x*dim.y+(int)pos.y;
 
     //Out-Of-Bounds
     if(!glm::all(glm::greaterThanEqual(pos, glm::vec2(0))) ||
