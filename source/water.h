@@ -12,7 +12,7 @@ struct Drop{
   glm::vec2 pos;
   glm::vec2 speed = glm::vec2(0.0);
   double volume = 1.0;   //This will vary in time
-  double sediment = 0.0; //Fraction of Volume that is Sediment!
+  double sediment = 0.0; //Sediment concentration
 
   //Parameters
   const float dt = 1.2;
