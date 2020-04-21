@@ -64,4 +64,6 @@ All of the code is wrapped with the world class in `world.h`. The bottom of this
 The rest is shaders and rendering stuff.
 
 ## License
-Mozilla Public License
+MIT License.
+
+See my website for a [more detailed copyright notice](https://weigert.vsos.ethz.ch/copyright-notice/).
