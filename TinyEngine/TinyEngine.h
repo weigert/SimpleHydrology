@@ -33,9 +33,10 @@ using slist = std::initializer_list<std::string>;
 #include "include/helpers/timer.h"
 
 //Utility Classes for the Engine
-#include "include/utility/shader.cpp"
 #include "include/utility/texture.cpp"
+#include "include/utility/shader.cpp"
 #include "include/utility/sprite.cpp"
+#include "include/utility/particle.cpp"
 #include "include/utility/billboard.cpp"
 #include "include/utility/model.cpp"
 

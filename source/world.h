@@ -47,7 +47,7 @@ void World::generate(){
   //Mountainy:
   perlin.SetOctaveCount(8);
   perlin.SetFrequency(1.0);
-  perlin.SetPersistence(0.4);
+  perlin.SetPersistence(0.5);
 
   double min, max = 0.0;
   for(int i = 0; i < dim.x*dim.y; i++){
@@ -178,7 +178,7 @@ glm::vec3 lookPos = glm::vec3(0, 0, 0);
 glm::mat4 camera = glm::lookAt(cameraPos, lookPos, glm::vec3(0,1,0));
 glm::mat4 projection = glm::ortho(-(float)WIDTH*zoom, (float)WIDTH*zoom, -(float)HEIGHT*zoom, (float)HEIGHT*zoom, -800.0f, 500.0f);
 
-glm::vec3 viewPos = glm::vec3(128.0, world.scale/2.0, 128.0);
+glm::vec3 viewPos = glm::vec3(world.dim.x/2.0, world.scale/2.0, world.dim.y/2.0);
 
 //Shader Stuff
 float steepness = 0.8;

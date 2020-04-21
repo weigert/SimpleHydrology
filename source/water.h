@@ -18,9 +18,9 @@ struct Drop{
   const float dt = 1.2;
   const double density = 1.0;  //This gives varying amounts of inertia and stuff...
   const double evapRate = 0.001;
-  const double depositionRate = 0.1;
+  const double depositionRate = 0.08;
   const double minVol = 0.01;
-  const double friction = 0.15;
+  const double friction = 0.1;
   const double volumeFactor = 100.0; //"Water Deposition Rate"
 
   //Sedimenation Process
@@ -37,15 +37,6 @@ glm::vec3 surfaceNormal(int index, double* h, glm::ivec2 dim, double scale){
   //Two Alternative Planes (+X -> -Y) (-X -> +Y)
   n += glm::cross(glm::vec3(1.0, scale*(h[index+dim.y]-h[index]), 0.0), glm::vec3(0.0, scale*(h[index-1]-h[index]), -1.0));
   n += glm::cross(glm::vec3(-1.0, scale*(h[index-dim.y]-h[index]), 0.0), glm::vec3(0.0, scale*(h[index+1]-h[index]), 1.0));
-
-/*
-  //Diagonal Planes Instead... (split the two above into two planes) This is more like what the grid actually looks like
-  n += glm::cross(glm::vec3(1.0, scale*(h[index+dim.y]-h[index]), 0.0), glm::vec3(1.0, scale*(h[index+dim.y-1]-h[index]), -1.0));
-  n += glm::cross(glm::vec3(1.0, scale*(h[index+dim.y-1]-h[index]), -1.0), glm::vec3(0.0, scale*(h[index-1]-h[index]), -1.0));
-
-  n += glm::cross(glm::vec3(-1.0, scale*(h[index-dim.y]-h[index]), 0.0), glm::vec3(-1.0, scale*(h[index-dim.y+1]-h[index]), 1.0));
-  n += glm::cross(glm::vec3(-1.0, scale*(h[index-dim.y+1]-h[index]), 1.0), glm::vec3(0.0, scale*(h[index+1]-h[index]), 1.0));
-*/
 
   return glm::normalize(n);
 }

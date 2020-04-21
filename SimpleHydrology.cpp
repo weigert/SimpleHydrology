@@ -18,11 +18,14 @@ int main( int argc, char* args[] ) {
   Shader depth("source/shader/depth.vs", "source/shader/depth.fs", {"in_Position"});
   Shader effect("source/shader/effect.vs", "source/shader/effect.fs", {"in_Quad", "in_Tex"});
   Shader billboard("source/shader/billboard.vs", "source/shader/billboard.fs", {"in_Quad", "in_Tex"});
-  Shader sprite("source/shader/sprite.vs", "source/shader/sprite.fs", {"in_Quad", "in_Tex"});
-  Shader spritedepth("source/shader/spritedepth.vs", "source/shader/spritedepth.fs", {"in_Quad", "in_Tex"});
 
-  //Sprite
-  Sprite tree(image::load("resource/Tree.png"));
+  //Particle System Shaders
+  Shader sprite("source/shader/sprite.vs", "source/shader/sprite.fs", {"in_Quad", "in_Tex", "in_Model"});
+  Shader spritedepth("source/shader/spritedepth.vs", "source/shader/spritedepth.fs", {"in_Quad", "in_Tex", "in_Model"});
+
+  //Trees as a Particle System
+  Particle trees;
+  Texture tree(image::load("resource/Tree.png"));
   Texture treenormal(image::load("resource/TreeNormal.png"));
 
   //Setup Rendering Billboards
@@ -58,23 +61,24 @@ int main( int argc, char* args[] ) {
     //Tree Shadows
     if(!world.trees.empty()){
 
+      //Update the Tree Particle System
+      trees.models.clear();
+      for(auto& t: world.trees){
+        glm::vec3 tpos = glm::vec3(t.pos.x, t.size + world.scale*world.heightmap[t.index], t.pos.y);
+        glm::mat4 model = glm::translate(glm::mat4(1.0), tpos - viewPos);
+        model = glm::rotate(model, rot, glm::vec3(0.0, 1.0, 0.0)); //Face Camera
+        model = glm::scale(model, glm::vec3(t.size));
+        trees.models.push_back(model);
+      }
+      trees.update();
+
+      //Render the Trees as a Particle System
       spritedepth.use();
       glActiveTexture(GL_TEXTURE0+0);
       glBindTexture(GL_TEXTURE_2D, tree.texture);
       spritedepth.setInt("spriteTexture", 0);
       spritedepth.setMat4("projectionCamera", depthProjection*depthCamera);
-
-      //Render all trees in the scene
-      for(auto& t: world.trees){
-        glm::vec3 shift = glm::vec3(0.0, t.size, 0.0);  //Starts at Base
-        shift += glm::vec3(0.0, world.scale*world.heightmap[t.index], 0.0);
-
-        tree.model = glm::translate(glm::mat4(1.0), glm::vec3(t.pos.x, 0.0, t.pos.y) - viewPos + shift);
-        tree.model = glm::rotate(tree.model, rot, glm::vec3(0.0, 1.0, 0.0));
-        tree.model = glm::scale(tree.model, glm::vec3(t.size));
-        spritedepth.setMat4("model", tree.model);
-        tree.render();
-      }
+      trees.render();
     }
 
     //Regular Image
@@ -98,6 +102,17 @@ int main( int argc, char* args[] ) {
     //Render the Trees
     if(!world.trees.empty()){
 
+      //Update the Tree Particle System
+      trees.models.clear();
+      for(auto& t: world.trees){
+        glm::vec3 tpos = glm::vec3(t.pos.x, t.size + world.scale*world.heightmap[t.index], t.pos.y);
+        glm::mat4 model = glm::translate(glm::mat4(1.0), tpos - viewPos);
+        model = glm::rotate(model, -glm::radians(rotation - 45.0f), glm::vec3(0.0, 1.0, 0.0)); //Face Camera
+        model = glm::scale(model, glm::vec3(t.size));
+        trees.models.push_back(model);
+      }
+      trees.update();
+
       sprite.use();
       glActiveTexture(GL_TEXTURE0+0);
       glBindTexture(GL_TEXTURE_2D, tree.texture);
@@ -110,19 +125,7 @@ int main( int argc, char* args[] ) {
       sprite.setVec3("lightPos", lightPos);
       glm::mat4 M = glm::rotate(glm::mat4(1.0), glm::radians(rotation - 45.0f), glm::vec3(0.0, 1.0, 0.0));
       sprite.setVec3("lookDir", M*glm::vec4(cameraPos, 1.0));
-
-      //Render all trees in the scene
-      for(auto& t: world.trees){
-        glm::vec3 shift = glm::vec3(0.0, t.size, 0.0);  //Starts at Base
-        shift += glm::vec3(0.0, world.scale*world.heightmap[t.index], 0.0);
-
-        //Move the Model
-        tree.model = glm::translate(glm::mat4(1.0), glm::vec3(t.pos.x, 0.0, t.pos.y) - viewPos + shift);
-        tree.model = glm::rotate(tree.model, -glm::radians(rotation - 45.0f), glm::vec3(0.0, 1.0, 0.0));
-        tree.model = glm::scale(tree.model, glm::vec3(t.size));
-        sprite.setMat4("model", tree.model);
-        tree.render();
-      }
+      trees.render();
     }
 
     //Render to Screen
