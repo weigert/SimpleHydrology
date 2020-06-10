@@ -16,9 +16,9 @@ struct Drop{
 
   //Parameters
   const float dt = 1.2;
-  const double density = 1.0;  //This gives varying amounts of inertia and stuff...
-  const double evapRate = 0.001;
-  const double depositionRate = 0.08;
+  const double density = 2.0;  //This gives varying amounts of inertia and stuff...
+  const double evapRate = 0.01;
+  const double depositionRate = 0.1;
   const double minVol = 0.01;
   const double friction = 0.1;
   const double volumeFactor = 100.0; //"Water Deposition Rate"
@@ -30,13 +30,15 @@ struct Drop{
 
 glm::vec3 surfaceNormal(int index, double* h, glm::ivec2 dim, double scale){
 
-  //Two large triangels adjacent to the plane (+Y -> +X) (-Y -> -X)
-  glm::vec3 n = glm::cross(glm::vec3(0.0, scale*(h[index+1]-h[index]), 1.0), glm::vec3(1.0, scale*(h[index+dim.y]-h[index]), 0.0));
-  n += glm::cross(glm::vec3(0.0, scale*(h[index-1]-h[index]), -1.0), glm::vec3(-1.0, scale*(h[index-dim.y]-h[index]), 0.0));
+  glm::vec3 n = glm::vec3(0.0);
 
-  //Two Alternative Planes (+X -> -Y) (-X -> +Y)
-  n += glm::cross(glm::vec3(1.0, scale*(h[index+dim.y]-h[index]), 0.0), glm::vec3(0.0, scale*(h[index-1]-h[index]), -1.0));
-  n += glm::cross(glm::vec3(-1.0, scale*(h[index-dim.y]-h[index]), 0.0), glm::vec3(0.0, scale*(h[index+1]-h[index]), 1.0));
+  //Two large triangles adjacent to the plane (+Y -> +X) (-Y -> -X)
+  for(int i = 1; i <= 1; i++){
+    n += (1.0f/(float)i*i)*glm::cross(glm::vec3(0.0, scale*(h[index+i]-h[index]), i), glm::vec3( i, scale*(h[index+i*dim.y]-h[index]), 0.0));
+    n += (1.0f/(float)i*i)*glm::cross(glm::vec3(0.0, scale*(h[index-i]-h[index]),-i), glm::vec3(-i, scale*(h[index-i*dim.y]-h[index]), 0.0));
+    n += (1.0f/(float)i*i)*glm::cross(glm::vec3( i, scale*(h[index+i*dim.y]-h[index]), 0.0), glm::vec3(0.0, scale*(h[index-i]-h[index]),-i));
+    n += (1.0f/(float)i*i)*glm::cross(glm::vec3(-i, scale*(h[index-i*dim.y]-h[index]), 0.0), glm::vec3(0.0, scale*(h[index+i]-h[index]), i));
+  }
 
   return glm::normalize(n);
 }
@@ -122,8 +124,7 @@ void Drop::flood(double* h, double* p, glm::ivec2 dim){
     int drain;
     bool drainfound = false;
 
-    std::function<void(int)> fill = [&](int i){
-
+    std::function<void(int)> floodfill = [&](int i){
       //Out of Bounds
       if(i < 0 || i >= size) return;
 
@@ -149,20 +150,19 @@ void Drop::flood(double* h, double* p, glm::ivec2 dim){
         return;
       }
 
-      //Part of the Pool
       set.push_back(i);
-      fill(i+dim.y);    //Fill Neighbors
-      fill(i-dim.y);
-      fill(i+1);
-      fill(i-1);
-      fill(i+dim.y+1);  //Diagonals (Improves Drainage)
-      fill(i-dim.y-1);
-      fill(i+dim.y-1);
-      fill(i-dim.y+1);
+      floodfill(i+1);
+      floodfill(i+dim.y+1);  //Fill Diagonals
+      floodfill(i+dim.y);    //Fill Neighbors
+      floodfill(i+dim.y-1);
+      floodfill(i-1);
+      floodfill(i-dim.y-1);
+      floodfill(i-dim.y);
+      floodfill(i-dim.y+1);
     };
 
     //Perform Flood
-    fill(index);
+    floodfill(index);
 
     //Drainage Point
     if(drainfound){
@@ -171,7 +171,7 @@ void Drop::flood(double* h, double* p, glm::ivec2 dim){
       pos = glm::vec2(drain/dim.y, drain%dim.y);
 
       //Set the New Waterlevel (Slowly)
-      double drainage = 0.001;
+      double drainage = 0.1;
       plane = (1.0-drainage)*initialplane + drainage*(h[drain] + p[drain]);
 
       //Compute the New Height
@@ -205,7 +205,7 @@ void Drop::flood(double* h, double* p, glm::ivec2 dim){
 
     //Adjust Planes
     initialplane = (plane > initialplane)?plane:initialplane;
-    plane += 0.5*(volume-tVol)/(double)set.size()/volumeFactor;
+    plane += 0.8*(volume-tVol)/(double)set.size()/volumeFactor;
   }
 
   //Couldn't place the volume (for some reason)- so ignore this drop.

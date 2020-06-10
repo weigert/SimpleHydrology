@@ -11,6 +11,7 @@ int main( int argc, char* args[] ) {
   world.generate();
 
   //Initialize the Visualization
+  Tiny::view.vsync = false;
   Tiny::init("River Systems Simulator", WIDTH, HEIGHT);
 
   //Setup Shaders
@@ -160,8 +161,12 @@ int main( int argc, char* args[] ) {
   Tiny::loop([&](){
     //Do Erosion Cycles!
     if(!paused){
+
       //Erode the World and Update the Model
-      world.erode(250);
+      //timer::benchmark<std::chrono::microseconds>([&]{
+        world.erode(250);
+      //});
+
       world.grow();
       model.construct(constructor); //Reconstruct Updated Model
 

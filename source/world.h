@@ -11,7 +11,7 @@ public:
   int SEED = 0;
   glm::ivec2 dim = glm::vec2(256, 256);  //Size of the heightmap array
 
-  double scale = 40.0;                  //"Physical" Height scaling of the map
+  double scale = 80.0;                  //"Physical" Height scaling of the map
   double heightmap[256*256] = {0.0};    //Flat Array
 
   double waterpath[256*256] = {0.0};    //Water Path Storage (Rivers)
@@ -409,7 +409,7 @@ std::function<void()> eventHandler = [&](){
 };
 
 std::function<glm::vec4(double, double)> hydromap = [](double t1, double t2){
-  glm::vec4 color = glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(0.2, 0.5, 1.0, 1.0), t1);
+  glm::vec4 color = glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(0.2, 0.5, 1.0, 1.0), ease::langmuir(t1, 5.0));
   if(t2 > 0.0) color = glm::mix(color, glm::vec4(0.15, 0.15, 0.45, 1.0), 1.0 - ease::langmuir(t2, 5.0));
   return color;
 };
