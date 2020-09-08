@@ -63,6 +63,14 @@ All of the code is wrapped with the world class in `world.h`. The bottom of this
 
 The rest is shaders and rendering stuff.
 
+## Windows Ports
+Windows ports for this program exist:
+
+https://github.com/pawel-mazurkiewicz/SimpleHydrologyWindows
+
+https://github.com/Roipo/SimpleHydrology
+
+
 ## License
 MIT License.
 
