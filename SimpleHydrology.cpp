@@ -166,8 +166,8 @@ int main( int argc, char* args[] ) {
       model.construct(constructor); //Reconstruct Updated Model
 
       //Redraw the Path and Death Image
-      if(viewmap)
-        map.raw(image::make<double>(world.dim, world.waterpath, world.waterpool, hydromap));
+      if(viewmap) // make map transposed
+        map.raw(image::makeT<double>(world.dim, world.waterpath, world.waterpool, hydromap));
     }
   });
 

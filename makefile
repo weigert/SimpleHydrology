@@ -5,6 +5,7 @@ TINYLINK = -lX11 -lpthread -lSDL2 -lnoise -lSDL2_image -lSDL2_mixer -lSDL2_ttf -
 
 CC = g++ -std=c++17
 COMPILER_FLAGS = -Wfatal-errors -O3
+#COMPILER_FLAGS = -Wfatal-errors -g -fsanitize=address
 LINKER_FLAGS = -I/usr/local/include -L/usr/local/lib -lnoise
 OBJ_NAME = hydrology
 all: $(OBJS)
