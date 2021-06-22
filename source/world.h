@@ -8,18 +8,22 @@ public:
   void erode(int cycles);               //Erode with N Particles
   void grow();
 
+  static const int width = 256;
+  static const int height = 256;
+  static const int size = width*height;
+
   int SEED = 0;
-  glm::ivec2 dim = glm::vec2(256, 256);  //Size of the heightmap array
+  glm::ivec2 dim = glm::vec2(width, height);  //Size of the heightmap array
 
   double scale = 40.0;                  //"Physical" Height scaling of the map
-  double heightmap[256*256] = {0.0};    //Flat Array
+  double heightmap[size] = {0.0};    //Flat Array
 
-  double waterpath[256*256] = {0.0};    //Water Path Storage (Rivers)
-  double waterpool[256*256] = {0.0};    //Water Pool Storage (Lakes / Ponds)
+  double waterpath[size] = {0.0};    //Water Path Storage (Rivers)
+  double waterpool[size] = {0.0};    //Water Pool Storage (Lakes / Ponds)
 
   //Trees
   std::vector<Plant> trees;
-  double plantdensity[256*256] = {0.0}; //Density for Plants
+  double plantdensity[size] = {0.0}; //Density for Plants
 
   //Erosion Process
   bool active = false;
@@ -50,8 +54,14 @@ void World::generate(){
   perlin.SetPersistence(0.5);
 
   double min, max = 0.0;
+
   for(int i = 0; i < dim.x*dim.y; i++){
-    heightmap[i] = perlin.GetValue((i/dim.y)*(1.0/dim.x), (i%dim.y)*(1.0/dim.y), SEED);
+
+    double x = i / dim.y;
+    double y = i % dim.y;
+
+    heightmap[i] = perlin.GetValue(x/dim.x, y/dim.y, SEED);
+
     if(heightmap[i] > max) max = heightmap[i];
     if(heightmap[i] < min) min = heightmap[i];
   }
@@ -205,7 +215,7 @@ glm::mat4 biasMatrix = glm::mat4(
     0.5, 0.5, 0.5, 1.0
 );
 
-std::function<void(Model* m)> constructor = [&](Model* m){
+std::function<void(Model* m)> constructor = [](Model* m){
   //Clear the Containers
   m->indices.clear();
   m->positions.clear();
@@ -331,7 +341,7 @@ std::function<void(Model* m)> constructor = [&](Model* m){
   }
 };
 
-std::function<void()> eventHandler = [&](){
+std::function<void()> eventHandler = [](){
 
   if(!Tiny::event.scroll.empty()){
 
@@ -353,6 +363,7 @@ std::function<void()> eventHandler = [&](){
     }
 
     //Adjust Stuff
+
     if(rotation < 0.0) rotation = 360.0 + rotation;
     else if(rotation > 360.0) rotation = rotation - 360.0;
     camera = glm::rotate(glm::lookAt(cameraPos, lookPos, glm::vec3(0,1,0)), glm::radians(rotation), glm::vec3(0,1,0));

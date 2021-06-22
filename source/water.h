@@ -31,12 +31,26 @@ struct Drop{
 glm::vec3 surfaceNormal(int index, double* h, glm::ivec2 dim, double scale){
 
   //Two large triangels adjacent to the plane (+Y -> +X) (-Y -> -X)
-  glm::vec3 n = glm::cross(glm::vec3(0.0, scale*(h[index+1]-h[index]), 1.0), glm::vec3(1.0, scale*(h[index+dim.y]-h[index]), 0.0));
-  n += glm::cross(glm::vec3(0.0, scale*(h[index-1]-h[index]), -1.0), glm::vec3(-1.0, scale*(h[index-dim.y]-h[index]), 0.0));
+  glm::vec3 n = {0,0,0};
+  
+  // would be better to get x,y 
+  // right in the arguments instead of index
+  int x = index / dim.y;
+  int y = index % dim.y;
+
+  if (x<dim.x-1 && y<dim.y-1)
+    n += glm::cross(glm::vec3(0.0, scale*(h[index+1]-h[index]), 1.0), glm::vec3(1.0, scale*(h[index+dim.y]-h[index]), 0.0));
+
+  if (x>0 && y>0)
+    n += glm::cross(glm::vec3(0.0, scale*(h[index-1]-h[index]), -1.0), glm::vec3(-1.0, scale*(h[index-dim.y]-h[index]), 0.0));
 
   //Two Alternative Planes (+X -> -Y) (-X -> +Y)
-  n += glm::cross(glm::vec3(1.0, scale*(h[index+dim.y]-h[index]), 0.0), glm::vec3(0.0, scale*(h[index-1]-h[index]), -1.0));
-  n += glm::cross(glm::vec3(-1.0, scale*(h[index-dim.y]-h[index]), 0.0), glm::vec3(0.0, scale*(h[index+1]-h[index]), 1.0));
+
+  if (x<dim.x-1 && y>0)
+    n += glm::cross(glm::vec3(1.0, scale*(h[index+dim.y]-h[index]), 0.0), glm::vec3(0.0, scale*(h[index-1]-h[index]), -1.0));
+
+  if (x>0 && y<dim.y-1)
+    n += glm::cross(glm::vec3(-1.0, scale*(h[index-dim.y]-h[index]), 0.0), glm::vec3(0.0, scale*(h[index+1]-h[index]), 1.0));
 
   return glm::normalize(n);
 }
