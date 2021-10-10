@@ -3,29 +3,25 @@ C++ implementation of a particle based procedural hydrology system for terrain g
 
 Rendered using my homebrew [TinyEngine](https://github.com/weigert/TinyEngine).
 
-[Link to a blog post about this](https://weigert.vsos.ethz.ch/2020/04/15/procedural-hydrology/)
+[Link to a blog post about this](https://nickmcd.me/2020/04/15/procedural-hydrology/)
 
-![Banner Image](https://weigert.vsos.ethz.ch/wp-content/uploads/2020/04/Banner.png)
+![Banner Image](https://github.com/weigert/SimpleHydrology/blob/master/screenshots/banner.png)
 
 ## Compiling
 
 Use the makefile to compile the program.
 
     make all
-    
+
 ### Dependencies
 
     Erosion System:
     - gcc
     - glm
     - libnoise
-    
-    Renderer (TinyEngine):
-    - SDL2 (Core, Image, TTF, Mixer)
-    - OpenGL3
-    - GLEW
-    - Boost
-    - ImGUI (included already as header files)
+
+    Renderer:
+    - TinyEngine (and sub dependencies)
 
 ## Usage
 
@@ -36,19 +32,20 @@ If no seed is specified, it will take a random one.
 ### Controls
 
     - Zoom and Rotate Camera: Scroll
+    - Arrow Keys: Move Camera Position
+    - WASD / C / V: Move Camera Anchor
     - Toggle Pause: P (WARNING: PAUSED BY DEFAULT!!)
-    - Change Camera Vertical Angle: UP / DOWN
+    - Toggle Map View: M
     - Toggle Hydrology Map View: ESC
-    - Move the Camera Anchor: WASD / SPACE / C
 
 ### Screenshots
-![Example Output](https://weigert.vsos.ethz.ch/wp-content/uploads/2020/04/hydrology.png)
+![Example Output](https://github.com/weigert/SimpleHydrology/blob/master/screenshots/hydrology.png)
 Example output when simulating on semi-rugged terrain.
 
-![Hydrology Map](https://weigert.vsos.ethz.ch/wp-content/uploads/2020/04/HydroMap-1.png)
+![Hydrology Map](https://github.com/weigert/SimpleHydrology/blob/master/screenshots/HydroMap-1.png)
 Example of a generated hydrology map.
 
-![Terrain Render](https://weigert.vsos.ethz.ch/wp-content/uploads/2020/04/HeightMap.png)
+![Terrain Render](https://github.com/weigert/SimpleHydrology/blob/master/screenshots/HeightMap.png)
 Corresponding rendering of the terrain.
 
 
@@ -62,6 +59,14 @@ The trees are implemented in `vegetation.h`.
 All of the code is wrapped with the world class in `world.h`. The bottom of this file contains a bunch of stuff relevant for rendering, but not the erosion system.
 
 The rest is shaders and rendering stuff.
+
+## Update October 2021
+
+The rendering system has been updated to use [vertex pooling](https://nickmcd.me/2021/04/04/high-performance-voxel-engine/) to remove all remeshing cost.
+
+Improvements have also been made to the flooding algorithm to increase the search plane at fixed, deterministic increments by iteratively looking for the lowest point on the boundary. Additionally, the region can be grown by only tracking the boundary.
+
+For a next iteration on this system, see [SoilMachine](https://github.com/weigert/SoilMachine).
 
 ## Windows Ports
 Windows ports for this program exist:
