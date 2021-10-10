@@ -40,29 +40,29 @@ void Plant::root(double* density, glm::ivec2 dim, double f){
 
   if(pos.x > 0){
     //
-    density[index - 256] += f*0.6;      //(-1, 0)
+    density[index - WSIZE] += f*0.6;      //(-1, 0)
 
     if(pos.y > 0)
-      density[index - 257] += f*0.4;    //(-1, -1)
+      density[index - WSIZE-1] += f*0.4;    //(-1, -1)
 
-    if(pos.y < 256-1)
-      density[index - 255] += f*0.4;    //(-1, 1)
+    if(pos.y < WSIZE-1)
+      density[index - WSIZE+1] += f*0.4;    //(-1, 1)
   }
 
-  if(pos.x < 256-1){
+  if(pos.x < WSIZE-1){
     //
-    density[index + 256] += f*0.6;    //(1, 0)
+    density[index + WSIZE] += f*0.6;    //(1, 0)
 
     if(pos.y > 0)
-      density[index + 255] += f*0.4;    //(1, -1)
+      density[index + WSIZE-1] += f*0.4;    //(1, -1)
 
-    if(pos.y < 256-1)
-      density[index + 257] += f*0.4;    //(1, 1)
+    if(pos.y < WSIZE-1)
+      density[index + WSIZE+1] += f*0.4;    //(1, 1)
   }
 
   if(pos.y > 0)
     density[index - 1]   += f*0.6;    //(0, -1)
 
-  if(pos.y < 256-1)
+  if(pos.y < WSIZE-1)
     density[index + 1]   += f*0.6;    //(0, 1)
 }

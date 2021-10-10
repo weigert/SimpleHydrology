@@ -1,9 +1,9 @@
-#version 130
+#version 430 core
 
-in vec3 in_Position;
-uniform mat4 dmvp;
+layout(location = 0) in vec3 in_Position;
+
+uniform mat4 dvp;
 
 void main(void) {
-	//Depth Position from Depth-Model-View-Projection Matrix!
-	gl_Position = dmvp * vec4(in_Position, 1.0f);
+	gl_Position = dvp * vec4(in_Position, 1.0f);
 }

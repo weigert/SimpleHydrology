@@ -1,11 +1,8 @@
-OBJS = SimpleHydrology.cpp
+TINYLINK = -lX11 -lpthread -lSDL2 -lSDL2_image -lSDL2_mixer -lSDL2_ttf -lGL -lGLEW -lboost_system -lboost_filesystem
 
-TINY = TinyEngine/include/imgui/imgui.cpp TinyEngine/include/imgui/imgui_demo.cpp TinyEngine/include/imgui/imgui_draw.cpp TinyEngine/include/imgui/imgui_widgets.cpp TinyEngine/include/imgui/imgui_impl_opengl3.cpp TinyEngine/include/imgui/imgui_impl_sdl.cpp
-TINYLINK = -lX11 -lpthread -lSDL2 -lnoise -lSDL2_image -lSDL2_mixer -lSDL2_ttf -lGL -lGLEW -lboost_serialization -lboost_system -lboost_filesystem
+CC = g++-10 -std=c++20 -ggdb3
+CF = -Wfatal-errors -O3
+LF = -I/usr/local/include -L/usr/local/lib -lnoise
 
-CC = g++ -std=c++17
-COMPILER_FLAGS = -Wfatal-errors -O3
-LINKER_FLAGS = -I/usr/local/include -L/usr/local/lib -lnoise
-OBJ_NAME = hydrology
-all: $(OBJS)
-			$(CC) $(OBJS) $(TINY) $(COMPILER_FLAGS) $(LINKER_FLAGS) $(TINYLINK) -o $(OBJ_NAME)
+all: SimpleHydrology.cpp
+			$(CC) SimpleHydrology.cpp $(CF) $(LF) -lTinyEngine $(TINYLINK) -o hydrology

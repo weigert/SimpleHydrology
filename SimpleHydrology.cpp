@@ -1,174 +1,196 @@
-#include "TinyEngine/TinyEngine.h"
+#include <TinyEngine/TinyEngine>
+#include <TinyEngine/camera>
+#include <TinyEngine/image>
 #include <noise/noise.h>
-#include "source/world.h" //Model
+
+#define WSIZE 256
+#define SCALE 80
+
+#include "source/vertexpool.h"
+#include "source/world.h"
+#include "source/model.h"
 
 int main( int argc, char* args[] ) {
+
+  //Initialize the World
+
+  World world;
 
   if(argc == 2)
     world.SEED = std::stoi(args[1]);
 
-  //Generate the World
   world.generate();
 
   //Initialize the Visualization
-  Tiny::init("River Systems Simulator", WIDTH, HEIGHT);
+
+  Tiny::window("Simple Hydrology", WIDTH, HEIGHT);
+
+  glDisable(GL_CULL_FACE);
+
+  cam::near = -800.0f;
+  cam::far = 800.0f;
+  cam::moverate = 10.0f;
+  cam::look = glm::vec3(WSIZE/2, 0, WSIZE/2);
+  cam::roty = 45.0f;
+  cam::init(3, cam::ORTHO);
+  cam::update();
 
   //Setup Shaders
-  Shader shader("source/shader/default.vs", "source/shader/default.fs", {"in_Position", "in_Normal", "in_Color"});
-  Shader depth("source/shader/depth.vs", "source/shader/depth.fs", {"in_Position"});
-  Shader effect("source/shader/effect.vs", "source/shader/effect.fs", {"in_Quad", "in_Tex"});
-  Shader billboard("source/shader/billboard.vs", "source/shader/billboard.fs", {"in_Quad", "in_Tex"});
-
-  //Particle System Shaders
-  Shader sprite("source/shader/sprite.vs", "source/shader/sprite.fs", {"in_Quad", "in_Tex", "in_Model"});
-  Shader spritedepth("source/shader/spritedepth.vs", "source/shader/spritedepth.fs", {"in_Quad", "in_Tex", "in_Model"});
+  Shader shader({"source/shader/default.vs", "source/shader/default.fs"}, {"in_Position", "in_Normal", "in_Color"});
+  Shader depth({"source/shader/depth.vs", "source/shader/depth.fs"}, {"in_Position"});
+  Shader effect({"source/shader/effect.vs", "source/shader/effect.fs"}, {"in_Quad", "in_Tex"});
+  Shader billboard({"source/shader/billboard.vs", "source/shader/billboard.fs"}, {"in_Quad", "in_Tex"});
+  Shader sprite({"source/shader/sprite.vs", "source/shader/sprite.fs"}, {"in_Quad", "in_Tex", "in_Model"});
+  Shader spritedepth({"source/shader/spritedepth.vs", "source/shader/spritedepth.fs"}, {"in_Quad", "in_Tex", "in_Model"});
 
   //Trees as a Particle System
-  Particle trees;
+  Square3D treemodel;									//Model we want to instance render!
+  Instance treeparticle(&treemodel);			//Particle system based on this model
+
   Texture tree(image::load("resource/Tree.png"));
   Texture treenormal(image::load("resource/TreeNormal.png"));
 
-  //Setup Rendering Billboards
-  Billboard shadow(2000, 2000, true); //800x800, depth only
-  Billboard image(WIDTH, HEIGHT, false); //1200x800, depth only
+	Buffer modelbuf;
+	treeparticle.bind<glm::mat4>("in_Model", &modelbuf);			//Update treeparticle system
+  std::vector<glm::mat4> treemodels;
 
-  //Setup 2D Images
-  Billboard map(world.dim.x, world.dim.y, false); //Render target for automata
-  map.raw(image::make<double>(world.dim, world.waterpath, world.waterpool, hydromap));
+  //Rendering Targets / Framebuffers
+  Billboard image(WIDTH, HEIGHT);     //1200x800, color and depth
+  Billboard shadow(2000, 2000); //800x800, depth only
+  Square2D flat;
 
-  //Setup World Model
-  Model model(constructor);
-  model.translate(-viewPos);
+  //Vertexpool for Drawing Surface
+  Vertexpool<Vertex> vertexpool(WSIZE*WSIZE, 1);
+  section = vertexpool.section(WSIZE*WSIZE, 0, glm::vec3(0));
+  indexmap(vertexpool, world);
+  updatemap(vertexpool, world);
+
+  //Texture for Hydrology Map Visualization
+  Texture map(image::make([&](int i){
+    double t1 = world.waterpath[i];
+    double t2 = world.waterpool[i];
+    glm::vec4 color = glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(0.2, 0.5, 1.0, 1.0), t1);
+    if(t2 > 0.0) color = glm::mix(color, glm::vec4(0.15, 0.15, 0.45, 1.0), 1.0 - t2);
+    return color;
+  }, world.dim));
+  glm::mat4 mapmodel = glm::scale(glm::mat4(1.0f), glm::vec3((float)HEIGHT/(float)WIDTH, 1.0f, 1.0f));
 
   //Visualization Hooks
-  Tiny::event.handler = eventHandler;
-	Tiny::view.interface = [](){};
+  Tiny::event.handler = [&](){
+
+    cam::handler();
+
+    if(!Tiny::event.press.empty() && Tiny::event.press.back() == SDLK_p)
+      paused = !paused;
+
+    if(!Tiny::event.press.empty() && Tiny::event.press.back() == SDLK_m)
+      viewmap = !viewmap;
+
+  };
+
+  Tiny::view.interface = [](){};
+
   Tiny::view.pipeline = [&](){
 
     //Render Shadowmap
+
     shadow.target();                  //Prepare Target
     depth.use();                      //Prepare Shader
-    model.model = glm::translate(glm::mat4(1.0), -viewPos);
-    depth.setMat4("dmvp", depthProjection * depthCamera * model.model);
-    model.render(GL_TRIANGLES);       //Render Model
+    depth.uniform("dvp", dvp);
+    vertexpool.render(GL_TRIANGLES);  //Render Surface Model
 
-    //We want the Model to Face the Light!
-    float rot = acos(glm::dot(glm::vec3(1, 0, 0), glm::normalize(glm::vec3(lightPos.x, 0, lightPos.z))));
-    if(lightPos.x < 0)
-      rot *= -1.0;
-    glm::mat4 faceLight = glm::rotate(glm::mat4(1.0), rot - glm::radians(45.0f), glm::vec3(0.0, 1.0, 0.0));
-
-    //Tree Shadows
     if(!world.trees.empty()){
-
-      //Update the Tree Particle System
-      trees.models.clear();
-      for(auto& t: world.trees){
-        glm::vec3 tpos = glm::vec3(t.pos.x, t.size + world.scale*world.heightmap[t.index], t.pos.y);
-        glm::mat4 model = glm::translate(glm::mat4(1.0), tpos - viewPos);
-        model = glm::rotate(model, rot, glm::vec3(0.0, 1.0, 0.0)); //Face Camera
-        model = glm::scale(model, glm::vec3(t.size));
-        trees.models.push_back(model);
-      }
-      trees.update();
 
       //Render the Trees as a Particle System
       spritedepth.use();
-      glActiveTexture(GL_TEXTURE0+0);
-      glBindTexture(GL_TEXTURE_2D, tree.texture);
-      spritedepth.setInt("spriteTexture", 0);
-      spritedepth.setMat4("projectionCamera", depthProjection*depthCamera);
-      trees.render();
+      spritedepth.texture("spriteTexture", tree);
+      spritedepth.uniform("om", faceLight);
+      spritedepth.uniform("dvp", dvp);
+      treeparticle.render();
+
     }
 
-    //Regular Image
-    image.target(skyCol);           //Prepare Target
-    shader.use();                   //Prepare Shader
-    glActiveTexture(GL_TEXTURE0+0);
-    glBindTexture(GL_TEXTURE_2D, shadow.depthTexture);
-    shader.setInt("shadowMap", 0);
-    shader.setVec3("lightCol", lightCol);
-    shader.setVec3("lightPos", lightPos);
-    shader.setVec3("lookDir", lookPos-cameraPos);
-    shader.setFloat("lightStrength", lightStrength);
-    shader.setMat4("projectionCamera", projection * camera);
-    shader.setMat4("dbmvp", biasMatrix * depthProjection * depthCamera * glm::mat4(1.0f));
-    shader.setMat4("model", model.model);
-    shader.setVec3("flatColor", flatColor);
-    shader.setVec3("steepColor", steepColor);
-    shader.setFloat("steepness", steepness);
-    model.render(GL_TRIANGLES);    //Render Model
+    //Render Scene to Image
 
-    //Render the Trees
+    image.target(skyCol);
+
+    shader.use();
+    shader.uniform("vp", cam::vp);
+    shader.uniform("dbvp", dbvp);
+    shader.texture("shadowMap", shadow.depth);
+    shader.uniform("lightCol", lightCol);
+    shader.uniform("lightPos", lightPos);
+    shader.uniform("lookDir", cam::pos);
+    shader.uniform("lightStrength", lightStrength);
+    vertexpool.render(GL_TRIANGLES);    //Render Model
+
     if(!world.trees.empty()){
 
-      //Update the Tree Particle System
-      trees.models.clear();
-      for(auto& t: world.trees){
-        glm::vec3 tpos = glm::vec3(t.pos.x, t.size + world.scale*world.heightmap[t.index], t.pos.y);
-        glm::mat4 model = glm::translate(glm::mat4(1.0), tpos - viewPos);
-        model = glm::rotate(model, -glm::radians(rotation - 45.0f), glm::vec3(0.0, 1.0, 0.0)); //Face Camera
-        model = glm::scale(model, glm::vec3(t.size));
-        trees.models.push_back(model);
-      }
-      trees.update();
+      glm::mat4 orient = glm::rotate(glm::mat4(1.0f), glm::radians(180.0f-cam::rot), glm::vec3(0.0, 1.0, 0.0));
 
       sprite.use();
-      glActiveTexture(GL_TEXTURE0+0);
-      glBindTexture(GL_TEXTURE_2D, tree.texture);
-      sprite.setInt("spriteTexture", 0);
-      glActiveTexture(GL_TEXTURE0+1);
-      glBindTexture(GL_TEXTURE_2D, treenormal.texture);
-      sprite.setInt("normalTexture", 1);
-      sprite.setMat4("projectionCamera", projection*camera);
-      sprite.setMat4("faceLight", faceLight);
-      sprite.setVec3("lightPos", lightPos);
-      glm::mat4 M = glm::rotate(glm::mat4(1.0), glm::radians(rotation - 45.0f), glm::vec3(0.0, 1.0, 0.0));
-      sprite.setVec3("lookDir", M*glm::vec4(cameraPos, 1.0));
-      trees.render();
+      sprite.texture("spriteTexture", tree);
+      sprite.texture("normalTexture", treenormal);
+      sprite.uniform("vp", cam::vp);
+      sprite.uniform("om", orient);
+      sprite.uniform("faceLight", faceLight);
+      sprite.uniform("lightPos", lightPos);
+      sprite.uniform("lookDir", cam::pos);
+      treeparticle.render();
+
     }
 
     //Render to Screen
-    Tiny::view.target(color::black);    //Prepare Target
-    effect.use();                //Prepare Shader
-    glActiveTexture(GL_TEXTURE0+0);
-    glBindTexture(GL_TEXTURE_2D, image.texture);
-    effect.setInt("imageTexture", 0);
-    glActiveTexture(GL_TEXTURE0+1);
-    glBindTexture(GL_TEXTURE_2D, image.depthTexture);
-    effect.setInt("depthTexture", 1);
-    image.render();                     //Render Image
 
-    //Render Additional Information
+    Tiny::view.target(skyCol);    //Prepare Target
+
+    effect.use();                             //Prepare Shader
+    effect.texture("imageTexture", image.texture);
+    effect.texture("depthTexture", image.depth);
+    flat.render();                            //Render Image
 
     if(viewmap){
 
       billboard.use();
-      glActiveTexture(GL_TEXTURE0+0);
-
-      glBindTexture(GL_TEXTURE_2D, map.texture);
-      map.move(glm::vec2(0.0, 0.8), glm::vec2(0.2));
-      billboard.setMat4("model", map.model);
-      map.render();
+      billboard.texture("imageTexture", map);
+      billboard.uniform("model", mapmodel);
+      flat.render();
 
     }
 
   };
 
-  //Define a World Mesher?
-
   Tiny::loop([&](){
-    //Do Erosion Cycles!
-    if(!paused){
-      //Erode the World and Update the Model
-      world.erode(250);
-      world.grow();
-      model.construct(constructor); //Reconstruct Updated Model
+
+    if(paused)
+      return;
+
+    world.erode(250); //Execute Erosion Cycles
+    world.grow();     //Grow Trees
+
+    updatemap(vertexpool, world);
+
+    //Update the Tree Particle System
+    treemodels.clear();
+    for(auto& t: world.trees){
+      glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(t.pos.x, t.size + world.scale*world.heightmap[t.index], t.pos.y));
+      model = glm::scale(model, glm::vec3(t.size));
+      treemodels.push_back(model);
+    }
+    modelbuf.fill(treemodels);
+    treeparticle.SIZE = treemodels.size();    //  cout<<world.trees.size()<<endl;
 
       //Redraw the Path and Death Image
-      if(viewmap)
-        map.raw(image::make<double>(world.dim, world.waterpath, world.waterpool, hydromap));
-    }
+      if(viewmap){
+        map.raw(image::make([&](int i){
+          double t1 = world.waterpath[i];
+          double t2 = world.waterpool[i];
+          glm::vec4 color = glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(0.2, 0.5, 1.0, 1.0), t1);
+          if(t2 > 0.0) color = glm::mix(color, glm::vec4(0.15, 0.15, 0.45, 1.0), 1.0 - t2);
+          return color;
+        }, world.dim));
+      }
+
   });
 
   return 0;

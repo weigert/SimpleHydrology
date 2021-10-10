@@ -1,4 +1,4 @@
-#version 130
+#version 430 core
 //Lighting Settings
 uniform vec3 lightCol;
 uniform vec3 lightPos;
@@ -8,12 +8,10 @@ uniform float lightStrength;
 //Sampler for the ShadowMap
 uniform sampler2D shadowMap;
 
-//IO
 in vec4 ex_Color;
 in vec3 ex_Normal;
-in vec2 ex_Position;
 in vec4 ex_Shadow;
-in vec3 ex_FragPos;
+
 out vec4 fragColor;
 
 //Sample a grid..

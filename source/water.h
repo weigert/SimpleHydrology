@@ -28,15 +28,15 @@ struct Drop{
   void flood(double* h, double* pool, glm::ivec2 dim);
 };
 
-glm::vec3 surfaceNormal(int index, double* h, glm::ivec2 dim, double scale){
+glm::vec3 surfaceNormal(int index, double* h, double* b, glm::ivec2 dim, double scale){
 
   //Two large triangels adjacent to the plane (+Y -> +X) (-Y -> -X)
-  glm::vec3 n = glm::cross(glm::vec3(0.0, scale*(h[index+1]-h[index]), 1.0), glm::vec3(1.0, scale*(h[index+dim.y]-h[index]), 0.0));
-  n += glm::cross(glm::vec3(0.0, scale*(h[index-1]-h[index]), -1.0), glm::vec3(-1.0, scale*(h[index-dim.y]-h[index]), 0.0));
+  glm::vec3 n = glm::cross(glm::vec3(0.0, scale*(h[index+1]-h[index] + b[index+1] - b[index]), 1.0), glm::vec3(1.0, scale*(h[index+dim.y]+b[index+dim.y]-h[index]-b[index]), 0.0));
+  n += glm::cross(glm::vec3(0.0, scale*(h[index-1]-h[index] + b[index-1]-b[index]), -1.0), glm::vec3(-1.0, scale*(h[index-dim.y]-h[index]+b[index-dim.y]-b[index]), 0.0));
 
   //Two Alternative Planes (+X -> -Y) (-X -> +Y)
-  n += glm::cross(glm::vec3(1.0, scale*(h[index+dim.y]-h[index]), 0.0), glm::vec3(0.0, scale*(h[index-1]-h[index]), -1.0));
-  n += glm::cross(glm::vec3(-1.0, scale*(h[index-dim.y]-h[index]), 0.0), glm::vec3(0.0, scale*(h[index+1]-h[index]), 1.0));
+  n += glm::cross(glm::vec3(1.0, scale*(h[index+dim.y]-h[index]+b[index+dim.y]-b[index]), 0.0), glm::vec3(0.0, scale*(h[index-1]-h[index]+b[index-1]-b[index]), -1.0));
+  n += glm::cross(glm::vec3(-1.0, scale*(h[index+dim.y]-h[index]+b[index+dim.y]-b[index]), 0.0), glm::vec3(0.0, scale*(h[index+1]-h[index]+b[index+1]-b[index]), 1.0));
 
   return glm::normalize(n);
 }
@@ -54,7 +54,7 @@ void Drop::descend(double* h, double* p, double* b, bool* track, double* pd, glm
     //Add to Path
     track[ind] = true;
 
-    glm::vec3 n = surfaceNormal(ind, h, dim, scale);
+    glm::vec3 n = surfaceNormal(ind, h, b, dim, scale);
 
     //Effective Parameter Set
     /* Higher plant density means less erosion */

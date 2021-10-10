@@ -1,4 +1,4 @@
-#version 130
+#version 430 core
 in vec2 ex_Tex;
 out vec4 fragColor;
 
@@ -18,4 +18,5 @@ void main(){
   vec4 color = texture(spriteTexture, ex_Tex);
   if(color.a == 0.0) discard;
   else fragColor = vec4(diffuse*color.xyz, 1.0);
+
 }
