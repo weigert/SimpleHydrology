@@ -25,7 +25,7 @@ struct Drop{
   const double evapRate = 0.001;
   const double depositionRate = 0.08;
   const double minVol = 0.01;
-  const double friction = 0.1;
+  const double friction = 0.25;
   const double volumeFactor = 100.0; //"Water Deposition Rate"
 
   //Sedimenation Process
@@ -65,16 +65,15 @@ void Drop::descend(double* h, double* p, double* b, bool* track, double* pd, glm
     /* Higher plant density means less erosion */
     double effD = depositionRate*max(0.0, 1.0-pd[ind]);
 
-    /* Lower Friction, Lower Evaporation in Streams
+    /* Higher Friction, Lower Evaporation in Streams
     makes particles prefer established streams -> "curvy" */
-    double effF = friction*(1.0-0.5*p[ind]);
+
+    double effF = friction*(1.0-p[ind]);
     double effR = evapRate*(1.0-0.2*p[ind]);
 
-    //Newtonian Mechanics
-    glm::vec2 acc = glm::vec2(n.x, n.z)/(float)(volume*density);
-    speed += dt*acc;
-    pos   += dt*speed;
-    speed *= (1.0-dt*effF);
+    speed = mix(vec2(n.x, n.z), speed, effF);
+    speed = sqrt(2.0f)*normalize(speed);
+    pos   += speed;
 
     //New Position
     int nind = (int)pos.x*dim.y+(int)pos.y;
@@ -86,8 +85,8 @@ void Drop::descend(double* h, double* p, double* b, bool* track, double* pd, glm
          break;
        }
 
-    //Particle is not accelerated
-    if(p[nind] > 0.3 && length(acc) < 0.01)
+    //Particle is Not ACcelerated
+    if(length(vec2(n.x, n.z))*effF < 1E-5)
       break;
 
     //Particle enters Pool
