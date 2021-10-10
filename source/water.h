@@ -1,3 +1,8 @@
+//Small Utility Function
+double max(double a, double b){
+  return (a > b)?a:b;
+}
+
 struct Drop{
   //Construct Particle at Position
   Drop(glm::vec2 _pos){ pos = _pos; }

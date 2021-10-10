@@ -92,8 +92,3 @@ void updatemap(Vertexpool<Vertex>& vertexpool, World& world){
   }
 
 }
-
-//Small Utility Function
-double max(double a, double b){
-  return (a > b)?a:b;
-}
