@@ -79,7 +79,7 @@ void updatemap(Vertexpool<Vertex>& vertexpool, World& world){
     if(water) color = waterColor;
     else color = glm::mix(flatColor, waterColor, p);
 
-    glm::vec3 normal = surfaceNormal(i*world.dim.y+j, world.heightmap, world.waterpool, world.dim, world.scale);
+    glm::vec3 normal = world.normal(i*world.dim.y+j);
     if(normal.y < steepness && !water)
       color = steepColor;
 

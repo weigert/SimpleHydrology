@@ -23,6 +23,22 @@ public:
 
   //Erosion Process
   bool active = false;
+
+  glm::vec3 normal(int index){
+
+    //Two large triangels adjacent to the plane (+Y -> +X) (-Y -> -X)
+    glm::vec3 n = glm::cross(glm::vec3(0.0, scale*(heightmap[index+1]-heightmap[index] + waterpool[index+1] - waterpool[index]), 1.0), glm::vec3(1.0, scale*(heightmap[index+dim.y]+waterpool[index+dim.y]-heightmap[index]-waterpool[index]), 0.0));
+    n += glm::cross(glm::vec3(0.0, scale*(heightmap[index-1]-heightmap[index] + waterpool[index-1]-waterpool[index]), -1.0), glm::vec3(-1.0, scale*(heightmap[index-dim.y]-heightmap[index]+waterpool[index-dim.y]-waterpool[index]), 0.0));
+
+    //Two Alternative Planes (+X -> -Y) (-X -> +Y)
+    n += glm::cross(glm::vec3(1.0, scale*(heightmap[index+dim.y]-heightmap[index]+waterpool[index+dim.y]-waterpool[index]), 0.0), glm::vec3(0.0, scale*(heightmap[index-1]-heightmap[index]+waterpool[index-1]-waterpool[index]), -1.0));
+    n += glm::cross(glm::vec3(-1.0, scale*(heightmap[index+dim.y]-heightmap[index]+waterpool[index+dim.y]-waterpool[index]), 0.0), glm::vec3(0.0, scale*(heightmap[index+1]-heightmap[index]+waterpool[index+1]-waterpool[index]), 1.0));
+
+    return glm::normalize(n);
+
+  }
+
+
 };
 
 /*
@@ -78,17 +94,14 @@ void World::erode(int cycles){
     glm::vec2 newpos = glm::vec2(rand()%(int)dim.x, rand()%(int)dim.y);
     Drop drop(newpos);
 
+    while(true){
 
-    int spill = 5;
-    while(drop.volume > drop.minVol && spill != 0){
+      while(drop.descend(normal((int)drop.pos.x * dim.y + (int)drop.pos.y), heightmap, waterpath, waterpool, track, plantdensity, dim, scale));
+      if(!drop.flood(heightmap, waterpool, dim))
+        break;
 
-      drop.descend(heightmap, waterpath, waterpool, track, plantdensity, dim, scale);
-
-      if(drop.volume > drop.minVol)
-        drop.flood(heightmap, waterpool, dim);
-
-      spill--;
     }
+
   }
 
   //Update Path
@@ -103,7 +116,7 @@ bool World::grow(){
   //Random Position
   {
     int i = rand()%(dim.x*dim.y);
-    glm::vec3 n = surfaceNormal(i, heightmap, waterpool, dim, scale);
+    glm::vec3 n = normal(i);
 
     if( waterpool[i] == 0.0 &&
         waterpath[i] < 0.2 &&
@@ -131,7 +144,7 @@ bool World::grow(){
           npos.y >= 0 && npos.y < dim.y ){
 
         Plant ntree(npos, dim);
-        glm::vec3 n = surfaceNormal(ntree.index, heightmap, waterpool, dim, scale);
+        glm::vec3 n = normal(ntree.index);
 
         if( waterpool[ntree.index] == 0.0 &&
             waterpath[ntree.index] < 0.2 &&
