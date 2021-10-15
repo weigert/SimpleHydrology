@@ -39,15 +39,15 @@ If no seed is specified, it will take a random one.
     - Toggle Hydrology Map View: ESC
 
 ### Screenshots
-![Example Output](https://github.com/weigert/SimpleHydrology/blob/master/screenshots/hydrology.png)
-Example output when simulating on semi-rugged terrain.
+![Example Output 1](https://github.com/weigert/SimpleHydrology/blob/master/screenshots/side1.png)
 
-![Hydrology Map](https://github.com/weigert/SimpleHydrology/blob/master/screenshots/HydroMap-1.png)
-Example of a generated hydrology map.
+![Example Output 1](https://github.com/weigert/SimpleHydrology/blob/master/screenshots/top1.png)
 
-![Terrain Render](https://github.com/weigert/SimpleHydrology/blob/master/screenshots/HeightMap.png)
-Corresponding rendering of the terrain.
+![Example Output 2](https://github.com/weigert/SimpleHydrology/blob/master/screenshots/side2.png)
 
+![Example Output 2](https://github.com/weigert/SimpleHydrology/blob/master/screenshots/top2.png)
+
+![Example Output 3](https://github.com/weigert/SimpleHydrology/blob/master/screenshots/top3.png)
 
 ## Reading
 The main file is just to wrap the OpenGL code for drawing. At the very bottom, you can see the main game loop that calls the erosion and vegetation growth functions.
