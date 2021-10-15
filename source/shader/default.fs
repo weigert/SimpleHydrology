@@ -35,25 +35,27 @@ float gridSample(int size){
   return shadow;
 }
 
-vec4 shade(){
-    //Shadow Value
+float shade(){
     float shadow = 0.0;
+		int size = 1;
+
     if(greaterThanEqual(ex_Shadow.xy, vec2(0.0f)) == bvec2(true) && lessThanEqual(ex_Shadow.xy, vec2(1.0f)) == bvec2(true))
-      shadow = gridSample(1);
+      shadow = gridSample(size);
 
-    //Sample the Shadow Value from Texture
-    return vec4(vec3(1.0-shadow), 1.0f);
+		return shadow;
 }
 
-vec4 phong(){
-  float diffuse = 0.5*max(dot(ex_Normal, normalize(lightPos)), 0.0);
-  float ambient = 0.001;
-  float spec = pow(max(dot(normalize(lookDir), reflect(lightPos, ex_Normal)), 0.0), 32.0);
-  spec = 0.5 * spec;
+vec4 phong() {
 
-  return vec4(lightCol*lightStrength*(diffuse + ambient + spec), 1.0f);
+float diffuse = clamp(dot(ex_Normal, normalize(lightPos)), 0.2, 0.8);
+float ambient = 0.3;
+float spec = 0.7*pow(max(dot(normalize(lookDir), normalize(reflect(lightPos, ex_Normal))), 0.0), 32.0);
+
+return vec4(lightCol*lightStrength*((1.0f-0.9*shade())*(diffuse + spec) + ambient ), 1.0f);
+
 }
+
 
 void main(void) {
-  fragColor = shade()*ex_Color;
+  fragColor = vec4((phong()*ex_Color).xyz, 1.0f);
 }

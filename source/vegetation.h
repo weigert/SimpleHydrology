@@ -16,7 +16,7 @@ struct Plant{
   const float rate = 0.05;
 
   void grow();
-  void root(double* density, glm::ivec2 dim, double factor);
+  void root(float* density, glm::ivec2 dim, float factor);
 
   Plant& operator=(const Plant& o){
     if(this != &o){  //Self Check
@@ -33,7 +33,7 @@ void Plant::grow(){
   size += rate*(maxsize-size);
 };
 
-void Plant::root(double* density, glm::ivec2 dim, double f){
+void Plant::root(float* density, glm::ivec2 dim, float f){
 
   //Can always do this one
   density[index]       += f*1.0;

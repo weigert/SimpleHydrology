@@ -68,12 +68,12 @@ void updatemap(Vertexpool<Vertex>& vertexpool, World& world){
   for(int j = 0; j < WSIZE; j++){
 
     int ind = i*world.dim.y+j;
-    float height = world.scale*world.heightmap[ind];
+    float height = SCALE*world.heightmap[ind];
 
     bool water = (world.waterpool[ind] > 0);
-    height += world.scale*world.waterpool[ind];
+    height += SCALE*world.waterpool[ind];
 
-    double p = world.waterpath[ind];
+    float p = world.waterpath[ind];
     glm::vec3 color;
 
     if(water) color = waterColor;

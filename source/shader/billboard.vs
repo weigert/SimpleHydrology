@@ -8,6 +8,6 @@ uniform mat4 model;
 out vec2 ex_Tex;
 
 void main(){
-  ex_Tex = in_Tex;
+  ex_Tex = vec2(1.0f-in_Tex.x, in_Tex.y);
   gl_Position = model*vec4(in_Quad, -1.0, 1.0);
 }

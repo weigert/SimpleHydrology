@@ -4,6 +4,7 @@
 #include <noise/noise.h>
 
 #define WSIZE 256
+#define FREQUENCY 1
 #define SCALE 80
 
 #include "source/vertexpool.h"
@@ -13,7 +14,6 @@
 int main( int argc, char* args[] ) {
 
   //Initialize the World
-
   World world;
 
   if(argc == 2)
@@ -56,7 +56,7 @@ int main( int argc, char* args[] ) {
 
   //Rendering Targets / Framebuffers
   Billboard image(WIDTH, HEIGHT);     //1200x800, color and depth
-  Billboard shadow(2000, 2000); //800x800, depth only
+  Billboard shadow(4000, 4000); //800x800, depth only
   Square2D flat;
 
   //Vertexpool for Drawing Surface
@@ -64,6 +64,8 @@ int main( int argc, char* args[] ) {
   section = vertexpool.section(WSIZE*WSIZE, 0, glm::vec3(0));
   indexmap(vertexpool, world);
   updatemap(vertexpool, world);
+
+  cout<<"Ayy"<<endl;
 
   //Texture for Hydrology Map Visualization
   Texture map(image::make([&](int i){
@@ -73,7 +75,15 @@ int main( int argc, char* args[] ) {
     if(t2 > 0.0) color = glm::mix(color, glm::vec4(0.15, 0.15, 0.45, 1.0), 1.0 - t2);
     return color;
   }, world.dim));
-  glm::mat4 mapmodel = glm::scale(glm::mat4(1.0f), glm::vec3((float)HEIGHT/(float)WIDTH, 1.0f, 1.0f));
+
+  glm::mat4 mapmodel = glm::mat4(1.0f);
+
+
+//  mapmodel = glm::translate(mapmodel, glm::vec3(-1.0+0.3*(float)HEIGHT/(float)WIDTH, -1.0+0.3, 0.0));
+  mapmodel = glm::scale(mapmodel, glm::vec3(1,1,1)*glm::vec3((float)HEIGHT/(float)WIDTH, 1.0f, 1.0f));
+  //model = glm::translate(glm::mat4(1.0), glm::vec3(2.0*pos.x-1.0+scale.x, 2.0*pos.y-1.0+scale.y, 0.0));
+  //model = glm::scale(model, glm::vec3(scale.x, scale.y, 1.0));
+
 
   //Visualization Hooks
   Tiny::event.handler = [&](){
@@ -136,6 +146,13 @@ int main( int argc, char* args[] ) {
       sprite.uniform("faceLight", faceLight);
       sprite.uniform("lightPos", lightPos);
       sprite.uniform("lookDir", cam::pos);
+
+      sprite.uniform("dbvp", dbvp);
+      sprite.texture("shadowMap", shadow.depth);
+      sprite.uniform("lightCol", lightCol);
+      sprite.uniform("lightStrength", lightStrength);
+
+
       treeparticle.render();
 
     }
@@ -165,7 +182,7 @@ int main( int argc, char* args[] ) {
     if(paused)
       return;
 
-    world.erode(250); //Execute Erosion Cycles
+    world.erode(250*FREQUENCY*FREQUENCY); //Execute Erosion Cycles
     world.grow();     //Grow Trees
 
     updatemap(vertexpool, world);
@@ -173,7 +190,7 @@ int main( int argc, char* args[] ) {
     //Update the Tree Particle System
     treemodels.clear();
     for(auto& t: world.trees){
-      glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(t.pos.x, t.size + world.scale*world.heightmap[t.index], t.pos.y));
+      glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(t.pos.x, t.size + SCALE*world.heightmap[t.index], t.pos.y));
       model = glm::scale(model, glm::vec3(t.size));
       treemodels.push_back(model);
     }

@@ -5,7 +5,7 @@ Rendered using my homebrew [TinyEngine](https://github.com/weigert/TinyEngine).
 
 [Link to a blog post about this](https://nickmcd.me/2020/04/15/procedural-hydrology/)
 
-![Banner Image](https://github.com/weigert/SimpleHydrology/blob/master/screenshots/banner.png)
+![Banner Image](https://github.com/weigert/SimpleHydrology/blob/master/screenshots/bannernew.png)
 
 ## Compiling
 

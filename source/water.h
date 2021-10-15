@@ -1,39 +1,35 @@
-//Small Utility Function
-double max(double a, double b){
-  return (a > b)?a:b;
-}
-
 struct Drop{
   //Construct Particle at Position
   Drop(glm::vec2 _pos){ pos = _pos; }
-  Drop(glm::vec2 _p, glm::ivec2 dim, double v){
+  Drop(glm::vec2 _p, glm::ivec2 dim, float v){
     pos = _p;
-    int index = _p.x*dim.y+_p.y;
+    int index = _p .x*dim.y+_p.y;
     volume = v;
   }
 
   //Properties
+  int age = 0;
   int index;
   glm::vec2 pos;
   glm::vec2 speed = glm::vec2(0.0);
-  double volume = 1.0;   //This will vary in time
-  double sediment = 0.0; //Sediment concentration
+  float volume = 1.0;   //This will vary in time
+  float sediment = 0.0; //Sediment concentration
 
   //Parameters
-  const double density = 1.0;  //This gives varying amounts of inertia and stuff...
-  const double evapRate = 0.001;
-  const double depositionRate = 1.2*0.08;
-  const double minVol = 0.01;
-  const double friction = 0.25;
-  const double volumeFactor = 0.1; //"Water Deposition Rate"
+  const float density = 1.0;  //This gives varying amounts of inertia and stuff...
+  const float evapRate = 0.001;
+  const float depositionRate = 1.2*0.08;
+  const float minVol = 0.01;
+  const float friction = 0.25;
+  const float volumeFactor = 0.5; //"Water Deposition Rate"
 
   //Number of Spills Left
-  int spill = 5;
+  int spill = 0;
 
-  bool descend(glm::vec3 n, double* h, double* path, double* pool, bool* track, double* pd, glm::ivec2 dim, double scale);
-  bool flood(double* h, double* pool, glm::ivec2 dim);
+  bool descend(glm::vec3 n, float* h, float* path, float* pool, float* track, float* pd, glm::ivec2 dim, float scale);
+  bool flood(float* h, float* pool, glm::ivec2 dim);
 
-  static void cascade(vec2 pos, glm::ivec2 dim, double* h, double* p){
+  static void cascade(vec2 pos, glm::ivec2 dim, float* h, float* p){
 
     ivec2 ipos = pos;
     int ind = ipos.x * dim.y + ipos.y;
@@ -45,7 +41,7 @@ struct Drop{
     const int ny[8] = {-1, 0, 1,-1, 1,-1, 0, 1};
 
     const float maxdiff = 0.01f;
-    const float settling = 0.2f;
+    const float settling = 0.1f;
 
     //Iterate over all Neighbors
     for(int m = 0; m < 8; m++){
@@ -87,7 +83,7 @@ struct Drop{
 
 };
 
-bool Drop::descend(glm::vec3 n, double* h, double* p, double* b, bool* track, double* pd, glm::ivec2 dim, double scale){
+bool Drop::descend(glm::vec3 n, float* h, float* p, float* b, float* track, float* pd, glm::ivec2 dim, float scale){
 
   if(volume < minVol)
     return false;
@@ -97,17 +93,22 @@ bool Drop::descend(glm::vec3 n, double* h, double* p, double* b, bool* track, do
   int ind = ipos.x*dim.y+ipos.y;
 
   //Add to Path
-  track[ind] = true;
+  track[ind] += volume;
 
   //Effective Parameter Set
   /* Higher plant density means less erosion */
-  double effD = depositionRate*max(0.0, 1.0-pd[ind]);
+  float effD = depositionRate*1.0-pd[ind];//max(0.0, );
+  if(effD < 0) effD = 0;
 
   /* Higher Friction, Lower Evaporation in Streams
   makes particles prefer established streams -> "curvy" */
 
-  double effF = friction*(1.0-p[ind]);
-  double effR = evapRate*(1.0-0.2*p[ind]);
+  float effF = friction*(1.0-p[ind]);
+  float effR = evapRate*(1.0-0.2*p[ind]);
+
+  //Particle is Not Accelerated
+  if(length(vec2(n.x, n.z))*effF < 1E-5)
+    return false;
 
   speed = mix(vec2(n.x, n.z), speed, effF);
   speed = sqrt(2.0f)*normalize(speed);
@@ -120,20 +121,18 @@ bool Drop::descend(glm::vec3 n, double* h, double* p, double* b, bool* track, do
   if(!glm::all(glm::greaterThanEqual(pos, glm::vec2(0))) ||
      !glm::all(glm::lessThan((glm::ivec2)pos, dim))){
        volume = 0.0;
-      return false;
-     }
+       return false;
+   }
 
-  //Particle is Not ACcelerated
-  if(length(vec2(n.x, n.z))*effF < 1E-5)
-    return false;
-
-  //Particle enters Pool
-  if(b[nind] > 0.0)
-    return false;
+   //Particle is in Pool
+   if(b[nind] > 0.0){
+     return false;
+   }
 
   //Mass-Transfer (in MASS)
-  double c_eq = max(0.0, glm::length(speed)*(h[ind]-h[nind]));
-  double cdiff = c_eq - sediment;
+  float c_eq = h[ind]-h[nind];
+  if(c_eq < 0) c_eq = 0;//max(0.0, (h[ind]-h[nind]));
+  float cdiff = c_eq - sediment;
   sediment += effD*cdiff;
   h[ind] -= effD*cdiff;
 
@@ -143,156 +142,181 @@ bool Drop::descend(glm::vec3 n, double* h, double* p, double* b, bool* track, do
 
   cascade(pos, dim, h, b);
 
+  age++;
   return true;
 
 }
 
 #include <unordered_map>
-#include <unordered_set>
 
-bool Drop::flood(double* h, double* p, glm::ivec2 dim){
+/*
+
+Flooding Algorithm Overhaul:
+  Currently, I can only flood at my position as long as we are rising.
+  Then I return and let the particle descend. This should only happen if I can't find a closed set to fill.
+
+  So: Rise and fill, removing the volume as we go along.
+  Then: If we find a lower point, try to rise and fill from there.
+
+*/
+
+bool Drop::flood(float* h, float* p, glm::ivec2 dim){
+using namespace glm;
 
   if(volume < minVol || spill-- <= 0)
     return false;
 
-  //Dimensions
-  const int size = dim.x*dim.y;
-  glm::ivec2 ipos = pos;
-  int index = ipos.x*dim.y + ipos.y;
+  //Either try to find a closed set under this plane, which has a certain volume,
+  //or raise the plane till we find the correct closed set height.
+  //And only if it can't be found, re-emit the particle.
 
-  double plane = h[index] + p[index];
+  bool tried[dim.x*dim.y] = {false};
 
-  //Flood and Boundary Sets
-  vector<int> set;
-  unordered_map<int, double> boundary;
-  bool tried[size] = {false};
+  unordered_map<int, float> boundary;
+  vector<ivec2> floodset;
 
-  int drain;
   bool drainfound = false;
+  ivec2 drain;
 
-  const std::function<void(int)> fill = [&](int i){
+  //Returns whether the set is closed at given height
 
-    //Out of Bounds
-    if(i < 0 || i >= size) return;
+  const function<bool(ivec2, float)> findset = [&](ivec2 i, float plane){
 
-    //Position has been tried
-    if(tried[i]) return;
-    tried[i] = true;
+    if(i.x < 0 || i.y < 0 || i.x >= dim.x || i.y >= dim.y)
+      return true;
+
+    int ind = i.x*dim.y+i.y;
+
+    if(tried[ind]) return true;
+    tried[ind] = true;
 
     //Wall / Boundary
-    if(plane < h[i] + p[i]){
-      boundary[i] = h[i] + p[i];
-      return;
+    if((h[ind] + p[ind]) > plane){
+      boundary[ind] = h[ind] + p[ind];
+      return true;
     }
 
     //Drainage Point
-    if(plane > h[i] + p[i]){
+    if((h[ind] + p[ind]) < plane){
 
       //No Drain yet
       if(!drainfound)
         drain = i;
 
       //Lower Drain
-      else if(p[i] + h[i] < p[drain] + h[drain])
+      else if(p[ind] + h[ind] < p[drain.x*dim.y+drain.y] + h[drain.x*dim.y*drain.y])
         drain = i;
 
       drainfound = true;
-      return;
+      return false;
 
     }
 
-    //Part of the Pool
-    set.push_back(i);
-    fill(i+dim.y);    //Fill Neighbors
-    fill(i-dim.y);
-    fill(i+1);
-    fill(i-1);
-    fill(i+dim.y+1);  //Diagonals (Improves Drainage)
-    fill(i-dim.y-1);
-    fill(i+dim.y-1);
-    fill(i-dim.y+1);
+    floodset.push_back(i);
+
+    if(!findset(i+ivec2( 1, 0), plane)) return false;
+    if(!findset(i-ivec2( 1, 0), plane)) return false;
+    if(!findset(i+ivec2( 0, 1), plane)) return false;
+    if(!findset(i-ivec2( 0, 1), plane)) return false;
+    if(!findset(i+ivec2( 1, 1), plane)) return false;
+    if(!findset(i-ivec2( 1, 1), plane)) return false;
+    if(!findset(i+ivec2(-1, 1), plane)) return false;
+    if(!findset(i-ivec2(-1, 1), plane)) return false;
+
+    return true;
 
   };
 
-  fill(index);            //Flood from Initial Position
+  ivec2 ipos = pos;
+  int ind = ipos.x*dim.y+ipos.y;
+  float plane = h[ind] + p[ind];
 
-  //Grow the Pool while Filling!
+  pair<int, float> minbound = pair<int, float>(ind, plane);
 
-  while(volume > minVol){
-
-    if(drainfound){
-
-      //Search for Exposed Neighbor with Non-Zero Waterlevel
-      const std::function<void(int)> lowbound = [&](int i){
-
-        //Out-Of-Bounds
-        if(i < 0 || i >= size)
-          return;
-
-        //Below Drain Height
-        if(h[i] + p[i] < h[drain] + p[drain])
-          return;
-
-        //Higher than Plane (we want lower)
-        if(h[i] + p[i] > plane)
-          return;
-
-        //No Water Level
-        if(p[i] == 0)
-          return;
-
-        plane = h[i] + p[i];
-
-      };
-
-      lowbound(drain+dim.y);    //Fill Neighbors
-      lowbound(drain-dim.y);
-      lowbound(drain+1);
-      lowbound(drain-1);
-      lowbound(drain+dim.y+1);  //Diagonals (Improves Drainage)
-      lowbound(drain-dim.y-1);
-      lowbound(drain+dim.y-1);
-      lowbound(drain-dim.y+1);
-
-      for(auto& s: set){ //Water Level to Plane Height
-        p[s] = (plane > h[s])?(plane-h[s]):0.0;
-        volume += ((plane > h[s])?(h[s] + p[s] - plane):p[s])/volumeFactor;
-      }
-
-      //Set Position to Drain, Continue
-      pos = glm::vec2(drain/dim.y, drain%dim.y);
-      return true;
-
-    }
+  while(volume > minVol && findset(ipos, plane)){
 
     //Find the Lowest Element on the Boundary
-    pair<int, double> minbound = (*boundary.begin());
+    minbound = (*boundary.begin());
     for(auto& b : boundary)
     if(b.second < minbound.second)
       minbound = b;
 
     //Compute the Height of our Volume over the Set
-    double vheight = volume*volumeFactor/(double)set.size();
+    float vheight = volume*volumeFactor/(float)floodset.size();
 
     //Not High Enough: Fill 'er up
-    if(plane + vheight < minbound.second){
+    if(plane + vheight < minbound.second)
       plane += vheight;
-      break;
+
+    else{
+      volume -= (minbound.second - plane)/volumeFactor*(float)floodset.size();
+      plane = minbound.second;
     }
 
-    //Raise Plane to Height of Minbound! Remove Volume
-    volume -= (minbound.second - plane)/volumeFactor*(double)set.size();
-    plane = minbound.second;
+    for(auto& s: floodset)
+      p[s.x*dim.y+s.y] = plane - h[s.x*dim.y+s.y];
 
-    //Remove Minbound from Boundary Set, Fill from Position
     boundary.erase(minbound.first);
     tried[minbound.first] = false;
-    fill(minbound.first);
+    ipos = ivec2(minbound.first/dim.y, minbound.first%dim.y);
 
   }
 
-  for(auto& s: set)
-    p[s] = plane - h[s];
+  if(drainfound){
+
+    //Search for Exposed Neighbor with Non-Zero Waterlevel
+    const std::function<void(glm::ivec2)> lowbound = [&](glm::ivec2 i){
+
+      //Out-Of-Bounds
+      if(i.x < 0 || i.y < 0 || i.x >= dim.x || i.y >= dim.y)
+        return;
+
+      if(p[i.x*dim.y+i.y] == 0)
+        return;
+
+      //Below Drain Height
+      if(h[i.x*dim.y+drain.y] + p[i.x*dim.y+drain.y] < h[drain.x*dim.y+drain.y] + p[drain.x*dim.y+drain.y])
+        return;
+
+      //Higher than Plane (we want lower)
+      if(h[i.x*dim.y+i.y] + p[i.x*dim.y+i.y] >= plane)
+        return;
+
+      plane = h[i.x*dim.y+i.y] + p[i.x*dim.y+i.y];
+
+    };
+
+    lowbound(drain+glm::ivec2(1,0));    //Fill Neighbors
+    lowbound(drain-glm::ivec2(1,0));    //Fill Neighbors
+    lowbound(drain+glm::ivec2(0,1));    //Fill Neighbors
+    lowbound(drain-glm::ivec2(0,1));    //Fill Neighbors
+    lowbound(drain+glm::ivec2(1,1));    //Fill Neighbors
+    lowbound(drain-glm::ivec2(1,1));    //Fill Neighbors
+    lowbound(drain+glm::ivec2(-1,1));    //Fill Neighbors
+    lowbound(drain-glm::ivec2(-1,1));    //Fill Neighbors
+
+    float oldvolume = volume;
+
+    //Water-Level to Plane-Height
+    for(auto& s: floodset){
+      int j = s.x*dim.y+s.y;
+    //  volume += ((plane > h[ind])?(h[ind] + p[ind] - plane):p[ind])/volumeFactor;
+      p[j] = (plane > h[j])?(plane-h[j]):0.0;
+    }
+
+    for(auto& b: boundary){
+      int j = b.first;
+    //  volume += ((plane > h[ind])?(h[ind] + p[ind] - plane):p[ind])/volumeFactor;
+      p[j] = (plane > h[j])?(plane-h[j]):0.0;
+    }
+
+//    sediment *= oldvolume/volume;
+    sediment /= (float)floodset.size(); //Distribute Sediment in Pool
+    pos = drain;
+
+    return true;
+
+  }
 
   return false;
 
