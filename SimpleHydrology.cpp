@@ -3,9 +3,9 @@
 #include <TinyEngine/image>
 #include <noise/noise.h>
 
-#define WSIZE 256
+#define WSIZE 512
 #define FREQUENCY 1
-#define SCALE 80
+#define SCALE 100
 
 #include "source/vertexpool.h"
 #include "source/world.h"
@@ -182,7 +182,7 @@ int main( int argc, char* args[] ) {
     if(paused)
       return;
 
-    world.erode(250*FREQUENCY*FREQUENCY); //Execute Erosion Cycles
+    world.erode(500*FREQUENCY*FREQUENCY); //Execute Erosion Cycles
     world.grow();     //Grow Trees
 
     updatemap(vertexpool, world);
