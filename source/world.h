@@ -1,6 +1,8 @@
-#define WSIZE (2 << 8)
-#define FREQUENCY 1
-#define SCALE 100
+
+int WSIZE = (2 << 6);
+int SCALE = 32;
+float MAXDIFF = 0.01f;
+int FREQUENCY = 1;
 
 #include "include/math.h"
 #include "vegetation.h"
@@ -12,19 +14,21 @@ struct World{
   void generate();                      //Initialize Heightmap
   void erode(int cycles);               //Erode with N Particles
   bool grow();
+  void incres();                        //Increase the Resolution
 
   int SEED = 0;
   int AGE = 0;
   glm::ivec2 dim = glm::vec2(WSIZE, WSIZE);  //Size of the heightmap array
 
-  float heightmap[WSIZE*WSIZE] = {0.0};    //Flat Array
+  float* heightmap = NULL;    //Flat Array
+  float min, max = 0.0;       //Perlin Noise Minima, Maxima
 
-  float waterpath[WSIZE*WSIZE] = {0.0};    //Water Path Storage (Rivers)
-  float waterpool[WSIZE*WSIZE] = {0.0};    //Water Pool Storage (Lakes / Ponds)
+  float* waterpath = NULL;    //Water Path Storage (Rivers)
+  float* waterpool = NULL;    //Water Pool Storage (Lakes / Ponds)
 
   //Trees
   std::vector<Plant> trees;
-  float plantdensity[WSIZE*WSIZE] = {0.0}; //Density for Plants
+  float* plantdensity = NULL; //Density for Plants
 
   //Erosion Process
   bool active = false;
@@ -65,6 +69,20 @@ struct World{
 
   }
 
+  World(){
+    heightmap = new float[dim.x*dim.y]{0.0f};
+    waterpath = new float[dim.x*dim.y]{0.0f};
+    waterpool = new float[dim.x*dim.y]{0.0f};
+    plantdensity = new float[dim.x*dim.y]{0.0f};
+  }
+
+  ~World(){
+    if( heightmap != NULL) delete[] heightmap;
+    if( waterpath != NULL) delete[] waterpath;
+    if( waterpool != NULL) delete[] waterpool;
+    if( plantdensity != NULL) delete[] plantdensity;
+  }
+
 };
 
 /*
@@ -91,7 +109,9 @@ void World::generate(){
   perlin.SetFrequency(FREQUENCY);
   perlin.SetPersistence(0.6);
 
-  float min, max = 0.0;
+  min = 0.0;
+  max = 0.0;
+
   for(int x = 0; x < dim.x; x++)
   for(int y = 0; y < dim.y; y++){
     int i = math::cflatten(x, y, dim);
@@ -104,6 +124,91 @@ void World::generate(){
   for(int i = 0; i < dim.x*dim.y; i++){
     heightmap[i] = (heightmap[i] - min)/(max - min);//+1.0f*((float)((i/dim.y)*(i/dim.y))/dim.x/dim.x)*((float)((i%dim.y)*(i%dim.y))/dim.y/dim.y);
   }
+
+}
+
+void World::incres(){
+
+  // Create Difference Map
+
+  //Initialize Heightmap
+  noise::module::Perlin perlin;
+
+  perlin.SetOctaveCount(8);
+  perlin.SetFrequency(FREQUENCY);
+  perlin.SetPersistence(0.6);
+
+  for(int x = 0; x < dim.x; x++)
+  for(int y = 0; y < dim.y; y++){
+
+    int i = math::cflatten(x, y, dim);
+
+    float h = perlin.GetValue((float)x*(1.0/dim.x), (float)y*(1.0/dim.y), SEED);
+    h = (h - min)/(max-min);
+
+    heightmap[i] = h - heightmap[i];
+
+  }
+
+  // Scale the New Heightmap
+
+  SCALE *= 2;
+  WSIZE *= 2;
+  MAXDIFF *= 0.5f;
+
+  dim.x = WSIZE;
+  dim.y = WSIZE;
+
+  float* hnew = new float[dim.x*dim.y]{0.0f};
+
+  min = 0.0f;
+  max = 0.0f;
+
+  for(int x = 0; x < dim.x; x++)
+  for(int y = 0; y < dim.y; y++){
+
+    int i = math::cflatten(x, y, dim);
+
+    hnew[i] = perlin.GetValue((float)x*(1.0/dim.x), (float)y*(1.0/dim.y), SEED);
+
+    if(hnew[i] > max) max = hnew[i];
+    if(hnew[i] < min) min = hnew[i];
+
+  }
+
+  for(int x = 0; x < dim.x; x++)
+  for(int y = 0; y < dim.y; y++){
+
+    int i = math::cflatten(x, y, dim);
+    int oi = math::cflatten(x/2, y/2, dim/2);
+
+    hnew[i] = (hnew[i] - min)/(max - min);
+    hnew[i] -= heightmap[oi];
+
+  }
+
+  float* wnew = new float[dim.x*dim.y]{0.0f};
+
+  for(int x = 0; x < dim.x; x++)
+  for(int y = 0; y < dim.y; y++){
+
+    int i = math::cflatten(x, y, dim);
+    int oi = math::cflatten(x/2, y/2, dim/2);
+
+    wnew[i] = waterpath[oi];
+
+  }
+
+  delete[] heightmap;
+  delete[] waterpath;
+  delete[] waterpool;
+  delete[] plantdensity;
+
+  heightmap = hnew;
+  waterpath = wnew;
+  waterpool = new float[dim.x*dim.y]{0.0f};
+  plantdensity = new float[dim.x*dim.y]{0.0f};
+  trees.clear();
 
 }
 
@@ -129,7 +234,7 @@ void World::erode(int cycles){
     while(true){
 
       while(drop.descend(normal(drop.pos), heightmap, waterpath, waterpool, track, plantdensity, dim, SCALE));
-      if(!drop.flood(heightmap, waterpool, dim))
+    //  if(!drop.flood(heightmap, waterpool, dim))
         break;
 
     }

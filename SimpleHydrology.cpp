@@ -78,8 +78,8 @@ int main( int argc, char* args[] ) {
   Square2D flat;
 
   //Vertexpool for Drawing Surface
-  Vertexpool<Vertex> vertexpool(WSIZE*WSIZE, 1);
-  section = vertexpool.section(WSIZE*WSIZE, 0, glm::vec3(0));
+  Vertexpool<Vertex> vertexpool(16*WSIZE*WSIZE, 1);
+  section = vertexpool.section(16*WSIZE*WSIZE, 0, glm::vec3(0));
   indexmap(vertexpool, world);
   updatemap(vertexpool, world);
 
@@ -105,6 +105,14 @@ int main( int argc, char* args[] ) {
 
     if(!Tiny::event.press.empty() && Tiny::event.press.back() == SDLK_m)
       viewmap = !viewmap;
+
+    if(!Tiny::event.press.empty() && Tiny::event.press.back() == SDLK_n){
+      world.incres();
+      indexmap(vertexpool, world);
+      updatemap(vertexpool, world);
+      cam::look = glm::vec3(world.dim.x/2, 0, world.dim.y/2);
+      cam::update();
+    }
 
   };
 
@@ -192,7 +200,7 @@ int main( int argc, char* args[] ) {
     if(paused)
       return;
 
-    world.erode(500*FREQUENCY*FREQUENCY); //Execute Erosion Cycles
+    world.erode(world.dim.x*world.dim.y/200); //Execute Erosion Cycles
     world.grow();     //Grow Trees
 
     updatemap(vertexpool, world);

@@ -23,7 +23,7 @@ struct Drop{
   const float volumeFactor = 0.5; //"Water Deposition Rate"
 
   //Number of Spills Left
-  int spill = 0;
+  int spill = 1;
 
   bool descend(glm::vec3 n, float* h, float* path, float* pool, float* track, float* pd, glm::ivec2 dim, float scale);
   bool flood(float* h, float* pool, glm::ivec2 dim);
@@ -39,7 +39,6 @@ struct Drop{
     const int nx[8] = {-1,-1,-1, 0, 0, 1, 1, 1};
     const int ny[8] = {-1, 0, 1,-1, 1,-1, 0, 1};
 
-    const float maxdiff = 0.01f;
     const float settling = 0.1f;
 
     //Iterate over all Neighbors
@@ -59,7 +58,7 @@ struct Drop{
         continue;
 
       //The Amount of Excess Difference!
-      float excess = abs(diff) - maxdiff;
+      float excess = abs(diff) - MAXDIFF;
       if(excess <= 0)  //No Excess
         continue;
 

@@ -43,8 +43,10 @@ uint* section = NULL;
 
 void indexmap(Vertexpool<Vertex>& vertexpool, World& world){
 
-  for(int i = 0; i < WSIZE-1; i++){
-  for(int j = 0; j < WSIZE-1; j++){
+  vertexpool.indices.clear();
+
+  for(int i = 0; i < world.dim.x-1; i++){
+  for(int j = 0; j < world.dim.y-1; j++){
 
     vertexpool.indices.push_back(math::cflatten(i, j, world.dim));
     vertexpool.indices.push_back(math::cflatten(i, j+1, world.dim));
@@ -64,8 +66,8 @@ void indexmap(Vertexpool<Vertex>& vertexpool, World& world){
 
 void updatemap(Vertexpool<Vertex>& vertexpool, World& world){
 
-  for(int i = 0; i < WSIZE; i++)
-  for(int j = 0; j < WSIZE; j++){
+  for(int i = 0; i < world.dim.x; i++)
+  for(int j = 0; j < world.dim.y; j++){
 
     int ind = math::cflatten(i, j, world.dim);
     float height = SCALE*world.heightmap[ind];
