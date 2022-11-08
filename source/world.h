@@ -1,8 +1,13 @@
+#define WSIZE (2 << 8)
+#define FREQUENCY 1
+#define SCALE 100
+
+#include "include/math.h"
 #include "vegetation.h"
 #include "water.h"
 
-class World{
-public:
+struct World{
+
   //Constructor
   void generate();                      //Initialize Heightmap
   void erode(int cycles);               //Erode with N Particles
@@ -24,20 +29,41 @@ public:
   //Erosion Process
   bool active = false;
 
-  glm::vec3 normal(int index){
+  glm::vec3 normal(glm::vec2 p){
 
-    //Two large triangels adjacent to the plane (+Y -> +X) (-Y -> -X)
-    glm::vec3 n = glm::cross(glm::vec3(0.0, SCALE*(heightmap[index+1]-heightmap[index] + waterpool[index+1] - waterpool[index]), 1.0), glm::vec3(1.0, SCALE*(heightmap[index+dim.y]+waterpool[index+dim.y]-heightmap[index]-waterpool[index]), 0.0));
-    n += glm::cross(glm::vec3(0.0, SCALE*(heightmap[index-1]-heightmap[index] + waterpool[index-1]-waterpool[index]), -1.0), glm::vec3(-1.0, SCALE*(heightmap[index-dim.y]-heightmap[index]+waterpool[index-dim.y]-waterpool[index]), 0.0));
+    glm::vec3 n = glm::vec3(0);
+
+    //Two large triangles adjacent to the plane (+Y -> +X) (-Y -> -X)
+
+    if(p.x < dim.x-1 && p.y < dim.y-1)
+    n += glm::cross(
+      glm::vec3( 0.0, SCALE*(heightmap[math::cflatten(p.x, p.y+1, dim)] - heightmap[math::cflatten(p.x, p.y, dim)] + waterpool[math::cflatten(p.x, p.y+1, dim)] - waterpool[math::cflatten(p.x, p.y, dim)]), 1.0),
+      glm::vec3( 1.0, SCALE*(heightmap[math::cflatten(p.x+1, p.y, dim)] - heightmap[math::cflatten(p.x, p.y, dim)] + waterpool[math::cflatten(p.x+1, p.y, dim)] - waterpool[math::cflatten(p.x, p.y, dim)]), 0.0)
+    );
+
+    if(p.x > 1 && p.y > 1)
+    n += glm::cross(
+      glm::vec3( 0.0, SCALE*(heightmap[math::cflatten(p.x, p.y-1, dim)] - heightmap[math::cflatten(p.x, p.y, dim)] + waterpool[math::cflatten(p.x, p.y-1, dim)] - waterpool[math::cflatten(p.x, p.y, dim)]),-1.0),
+      glm::vec3(-1.0, SCALE*(heightmap[math::cflatten(p.x-1, p.y, dim)] - heightmap[math::cflatten(p.x, p.y, dim)] + waterpool[math::cflatten(p.x-1, p.y, dim)] - waterpool[math::cflatten(p.x, p.y, dim)]), 0.0)
+    );
 
     //Two Alternative Planes (+X -> -Y) (-X -> +Y)
-    n += glm::cross(glm::vec3(1.0, SCALE*(heightmap[index+dim.y]-heightmap[index]+waterpool[index+dim.y]-waterpool[index]), 0.0), glm::vec3(0.0, SCALE*(heightmap[index-1]-heightmap[index]+waterpool[index-1]-waterpool[index]), -1.0));
-    n += glm::cross(glm::vec3(-1.0, SCALE*(heightmap[index+dim.y]-heightmap[index]+waterpool[index+dim.y]-waterpool[index]), 0.0), glm::vec3(0.0, SCALE*(heightmap[index+1]-heightmap[index]+waterpool[index+1]-waterpool[index]), 1.0));
+
+    if(p.x < dim.x-1 && p.y > 1)
+    n += glm::cross(
+      glm::vec3( 1.0, SCALE*(heightmap[math::cflatten(p.x+1, p.y, dim)] - heightmap[math::cflatten(p.x, p.y, dim)] + waterpool[math::cflatten(p.x+1, p.y, dim)] - waterpool[math::cflatten(p.x, p.y, dim)]), 0.0),
+      glm::vec3( 0.0, SCALE*(heightmap[math::cflatten(p.x, p.y-1, dim)] - heightmap[math::cflatten(p.x, p.y, dim)] + waterpool[math::cflatten(p.x, p.y-1, dim)] - waterpool[math::cflatten(p.x, p.y, dim)]),-1.0)
+    );
+
+    if(p.x > 1 && p.y < dim.y-1)
+    n += glm::cross(
+      glm::vec3(-1.0, SCALE*(heightmap[math::cflatten(p.x-1, p.y, dim)] - heightmap[math::cflatten(p.x, p.y, dim)] + waterpool[math::cflatten(p.x+1, p.y, dim)] - waterpool[math::cflatten(p.x, p.y, dim)]), 0.0),
+      glm::vec3( 0.0, SCALE*(heightmap[math::cflatten(p.x, p.y+1, dim)] - heightmap[math::cflatten(p.x, p.y, dim)] + waterpool[math::cflatten(p.x, p.y+1, dim)] - waterpool[math::cflatten(p.x, p.y, dim)]), 1.0)
+    );
 
     return glm::normalize(n);
 
   }
-
 
 };
 
@@ -66,15 +92,19 @@ void World::generate(){
   perlin.SetPersistence(0.6);
 
   float min, max = 0.0;
-  for(int i = 0; i < dim.x*dim.y; i++){
-    heightmap[i] = perlin.GetValue((i/dim.y)*(1.0/dim.x), (i%dim.y)*(1.0/dim.y), SEED);
+  for(int x = 0; x < dim.x; x++)
+  for(int y = 0; y < dim.y; y++){
+    int i = math::cflatten(x, y, dim);
+    heightmap[i] = perlin.GetValue((float)x*(1.0/dim.x), (float)y*(1.0/dim.y), SEED);
     if(heightmap[i] > max) max = heightmap[i];
     if(heightmap[i] < min) min = heightmap[i];
   }
+
   //Normalize
   for(int i = 0; i < dim.x*dim.y; i++){
     heightmap[i] = (heightmap[i] - min)/(max - min);//+1.0f*((float)((i/dim.y)*(i/dim.y))/dim.x/dim.x)*((float)((i%dim.y)*(i%dim.y))/dim.y/dim.y);
   }
+
 }
 
 /*
@@ -98,7 +128,7 @@ void World::erode(int cycles){
 
     while(true){
 
-      while(drop.descend(normal((int)drop.pos.x * dim.y + (int)drop.pos.y), heightmap, waterpath, waterpool, track, plantdensity, dim, SCALE));
+      while(drop.descend(normal(drop.pos), heightmap, waterpath, waterpool, track, plantdensity, dim, SCALE));
       if(!drop.flood(heightmap, waterpool, dim))
         break;
 
@@ -118,7 +148,7 @@ bool World::grow(){
   //Random Position
   {
     int i = rand()%(dim.x*dim.y);
-    glm::vec3 n = normal(i);
+    glm::vec3 n = normal(math::cunflatten(i, dim));
 
     if( waterpool[i] == 0.0 &&
         waterpath[i] < 0.2 &&
@@ -139,14 +169,14 @@ bool World::grow(){
     //Spawn a new Tree!
     if(rand()%50 == 0){
       //Find New Position
-      glm::vec2 npos = trees[i].pos + glm::vec2(rand()%9-4, rand()%9-4);
+      glm::vec2 npos = trees[i].pos + glm::ivec2(rand()%9-4, rand()%9-4);
 
       //Check for Out-Of-Bounds
       if( npos.x >= 0 && npos.x < dim.x &&
           npos.y >= 0 && npos.y < dim.y ){
 
         Plant ntree(npos, dim);
-        glm::vec3 n = normal(ntree.index);
+        glm::vec3 n = normal(math::cunflatten(ntree.index, dim));
 
         if( waterpool[ntree.index] == 0.0 &&
             waterpath[ntree.index] < 0.2 &&

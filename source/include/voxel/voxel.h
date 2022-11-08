@@ -458,7 +458,7 @@ void ize(World& world, string savename){
 
       float h = SCALE*SDIM.y*lerp(x, z, sx, sz, world.heightmap);
 
-      vec3 n = world.normal(x*world.dim.x + z);
+      vec3 n = world.normal(glm::ivec2(x, z));
       bool rock = (n.y < 0.8);
 
       for(int y = 0; y < h-3; y++)

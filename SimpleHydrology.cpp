@@ -4,14 +4,10 @@
 #include <TinyEngine/image>
 #include <noise/noise.h>
 
-#define WSIZE 512
-#define FREQUENCY 1
-#define SCALE 100
-
 #include "source/vertexpool.h"
 #include "source/world.h"
 #include "source/model.h"
-#include "source/voxel.h"
+#include "source/include/voxel/voxel.h"
 
 int main( int argc, char* args[] ) {
 
@@ -196,7 +192,7 @@ int main( int argc, char* args[] ) {
     if(paused)
       return;
 
-    world.erode(250*FREQUENCY*FREQUENCY); //Execute Erosion Cycles
+    world.erode(500*FREQUENCY*FREQUENCY); //Execute Erosion Cycles
     world.grow();     //Grow Trees
 
     updatemap(vertexpool, world);
@@ -213,7 +209,9 @@ int main( int argc, char* args[] ) {
 
       //Redraw the Path and Death Image
       if(viewmap){
-        map.raw(image::make([&](int i){
+        map.raw(image::make([&](int ind){
+
+          int i = math::cflatten(math::unflatten(ind, world.dim), world.dim);
           double t1 = world.waterpath[i];
           double t2 = world.waterpool[i];
           glm::vec4 color = glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(0.2, 0.5, 1.0, 1.0), t1);

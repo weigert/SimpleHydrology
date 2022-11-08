@@ -3,7 +3,7 @@ struct Drop{
   Drop(glm::vec2 _pos){ pos = _pos; }
   Drop(glm::vec2 _p, glm::ivec2 dim, float v){
     pos = _p;
-    int index = _p .x*dim.y+_p.y;
+    int index = math::cflatten(_p, dim);
     volume = v;
   }
 
@@ -31,7 +31,7 @@ struct Drop{
   static void cascade(vec2 pos, glm::ivec2 dim, float* h, float* p){
 
     ivec2 ipos = pos;
-    int ind = ipos.x * dim.y + ipos.y;
+    int ind = math::cflatten(ipos, dim);
 
     if(p[ind] > 0) return; //Don't do this with water
 
@@ -46,7 +46,7 @@ struct Drop{
     for(int m = 0; m < 8; m++){
 
       ivec2 npos = ipos + ivec2(nx[m], ny[m]);
-      int nind = npos.x * dim.y + npos.y;
+      int nind = math::cflatten(npos, dim);
 
       if(npos.x >= dim.x || npos.y >= dim.y
          || npos.x < 0 || npos.y < 0) continue;
@@ -89,7 +89,7 @@ bool Drop::descend(glm::vec3 n, float* h, float* p, float* b, float* track, floa
 
   //Initial Position
   glm::ivec2 ipos = pos;
-  int ind = ipos.x*dim.y+ipos.y;
+  int ind = math::cflatten(ipos, dim);
 
   //Add to Path
   track[ind] += volume;
@@ -118,7 +118,7 @@ bool Drop::descend(glm::vec3 n, float* h, float* p, float* b, float* track, floa
   pos   += speed;
 
   //New Position
-  int nind = (int)pos.x*dim.y+(int)pos.y;
+  int nind = math::cflatten(pos, dim);
 
   //Out-Of-Bounds
   if(!glm::all(glm::greaterThanEqual(pos, glm::vec2(0))) ||
@@ -188,7 +188,7 @@ using namespace glm;
     if(i.x < 0 || i.y < 0 || i.x >= dim.x || i.y >= dim.y)
       return true;
 
-    int ind = i.x*dim.y+i.y;
+    int ind = math::cflatten(i, dim);
 
     if(tried[ind]) return true;
     tried[ind] = true;
@@ -207,7 +207,7 @@ using namespace glm;
         drain = i;
 
       //Lower Drain
-      else if(p[ind] + h[ind] < p[drain.x*dim.y+drain.y] + h[drain.x*dim.y*drain.y])
+      else if(p[ind] + h[ind] < p[math::cflatten(drain, dim)] + h[math::cflatten(drain, dim)])
         drain = i;
 
       drainfound = true;
@@ -231,7 +231,7 @@ using namespace glm;
   };
 
   ivec2 ipos = pos;
-  int ind = ipos.x*dim.y+ipos.y;
+  int ind = math::cflatten(ipos, dim);
   float plane = h[ind] + p[ind];
 
   pair<int, float> minbound = pair<int, float>(ind, plane);
@@ -256,12 +256,14 @@ using namespace glm;
       plane = minbound.second;
     }
 
-    for(auto& s: floodset)
-      p[s.x*dim.y+s.y] = plane - h[s.x*dim.y+s.y];
+    for(auto& s: floodset){
+      int sind = math::cflatten(s, dim);
+      p[sind] = plane - h[sind];
+    }
 
     boundary.erase(minbound.first);
     tried[minbound.first] = false;
-    ipos = ivec2(minbound.first/dim.y, minbound.first%dim.y);
+    ipos = math::cunflatten(minbound.first, dim);
 
   }
 
@@ -274,18 +276,21 @@ using namespace glm;
       if(i.x < 0 || i.y < 0 || i.x >= dim.x || i.y >= dim.y)
         return;
 
-      if(p[i.x*dim.y+i.y] == 0)
+      int iind = math::cflatten(i, dim);
+      int dind = math::cflatten(drain, dim);
+
+      if(p[iind] == 0)
         return;
 
       //Below Drain Height
-      if(h[i.x*dim.y+drain.y] + p[i.x*dim.y+drain.y] < h[drain.x*dim.y+drain.y] + p[drain.x*dim.y+drain.y])
+      if(h[iind] + p[iind] < h[dind] + p[dind])
         return;
 
       //Higher than Plane (we want lower)
-      if(h[i.x*dim.y+i.y] + p[i.x*dim.y+i.y] >= plane)
+      if(h[iind] + p[iind] >= plane)
         return;
 
-      plane = h[i.x*dim.y+i.y] + p[i.x*dim.y+i.y];
+      plane = h[iind] + p[iind];
 
     };
 
@@ -302,7 +307,7 @@ using namespace glm;
 
     //Water-Level to Plane-Height
     for(auto& s: floodset){
-      int j = s.x*dim.y+s.y;
+      int j = math::cflatten(s, dim);
     //  volume += ((plane > h[ind])?(h[ind] + p[ind] - plane):p[ind])/volumeFactor;
       p[j] = (plane > h[j])?(plane-h[j]):0.0;
     }

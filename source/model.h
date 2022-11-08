@@ -46,13 +46,13 @@ void indexmap(Vertexpool<Vertex>& vertexpool, World& world){
   for(int i = 0; i < WSIZE-1; i++){
   for(int j = 0; j < WSIZE-1; j++){
 
-    vertexpool.indices.push_back(i*world.dim.y+j);
-    vertexpool.indices.push_back(i*world.dim.y+(j+1));
-    vertexpool.indices.push_back((i+1)*world.dim.y+j);
+    vertexpool.indices.push_back(math::cflatten(i, j, world.dim));
+    vertexpool.indices.push_back(math::cflatten(i, j+1, world.dim));
+    vertexpool.indices.push_back(math::cflatten(i+1, j, world.dim));
 
-    vertexpool.indices.push_back((i+1)*world.dim.y+j);
-    vertexpool.indices.push_back(i*world.dim.y+(j+1));
-    vertexpool.indices.push_back((i+1)*world.dim.y+(j+1));
+    vertexpool.indices.push_back(math::cflatten(i+1, j, world.dim));
+    vertexpool.indices.push_back(math::cflatten(i, j+1, world.dim));
+    vertexpool.indices.push_back(math::cflatten(i+1, j+1, world.dim));
 
   }}
 
@@ -67,7 +67,7 @@ void updatemap(Vertexpool<Vertex>& vertexpool, World& world){
   for(int i = 0; i < WSIZE; i++)
   for(int j = 0; j < WSIZE; j++){
 
-    int ind = i*world.dim.y+j;
+    int ind = math::cflatten(i, j, world.dim);
     float height = SCALE*world.heightmap[ind];
 
     bool water = (world.waterpool[ind] > 0);
@@ -79,7 +79,7 @@ void updatemap(Vertexpool<Vertex>& vertexpool, World& world){
     if(water) color = waterColor;
     else color = glm::mix(flatColor, waterColor, p);
 
-    glm::vec3 normal = world.normal(i*world.dim.y+j);
+    glm::vec3 normal = world.normal(glm::ivec2(i, j));
     if(normal.y < steepness && !water)
       color = steepColor;
 
