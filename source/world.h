@@ -9,6 +9,7 @@ public:
   bool grow();
 
   int SEED = 0;
+  int AGE = 0;
   glm::ivec2 dim = glm::vec2(WSIZE, WSIZE);  //Size of the heightmap array
 
   float heightmap[WSIZE*WSIZE] = {0.0};    //Flat Array
@@ -82,6 +83,8 @@ void World::generate(){
 ===================================================
 */
 void World::erode(int cycles){
+
+  AGE++;
 
   //Track the Movement of all Particles
   float track[dim.x*dim.y] = {0.0f};

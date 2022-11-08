@@ -1,25 +1,47 @@
 #include <TinyEngine/TinyEngine>
 #include <TinyEngine/camera>
+#include <TinyEngine/parse>
 #include <TinyEngine/image>
 #include <noise/noise.h>
 
-#define WSIZE 256
+#define WSIZE 512
 #define FREQUENCY 1
-#define SCALE 80
+#define SCALE 100
 
 #include "source/vertexpool.h"
 #include "source/world.h"
 #include "source/model.h"
+#include "source/voxel.h"
 
 int main( int argc, char* args[] ) {
 
+  parse::get(argc, args);
+
   //Initialize the World
+
   World world;
 
-  if(argc == 2)
-    world.SEED = std::stoi(args[1]);
+  if(parse::option.contains("SEED"))
+    world.SEED = std::stoi(parse::option["SEED"]);
 
   world.generate();
+
+  if(parse::option.contains("run")){
+
+    int Niter =  std::stoi(parse::option["run"]);
+
+    while(world.AGE < Niter){
+      cout<<"Eroding ("<<world.AGE<<"/"<<Niter<<")"<<endl;
+      world.erode(250*FREQUENCY*FREQUENCY); //Execute Erosion Cycles
+      world.grow();     //Grow Trees
+    }
+
+    if(parse::option.contains("voxel"))
+      voxel::ize(world, parse::option["voxel"]);
+
+    return 0;
+
+  }
 
   //Initialize the Visualization
 
@@ -65,8 +87,6 @@ int main( int argc, char* args[] ) {
   indexmap(vertexpool, world);
   updatemap(vertexpool, world);
 
-  cout<<"Ayy"<<endl;
-
   //Texture for Hydrology Map Visualization
   Texture map(image::make([&](int i){
     double t1 = world.waterpath[i];
@@ -77,13 +97,7 @@ int main( int argc, char* args[] ) {
   }, world.dim));
 
   glm::mat4 mapmodel = glm::mat4(1.0f);
-
-
-//  mapmodel = glm::translate(mapmodel, glm::vec3(-1.0+0.3*(float)HEIGHT/(float)WIDTH, -1.0+0.3, 0.0));
   mapmodel = glm::scale(mapmodel, glm::vec3(1,1,1)*glm::vec3((float)HEIGHT/(float)WIDTH, 1.0f, 1.0f));
-  //model = glm::translate(glm::mat4(1.0), glm::vec3(2.0*pos.x-1.0+scale.x, 2.0*pos.y-1.0+scale.y, 0.0));
-  //model = glm::scale(model, glm::vec3(scale.x, scale.y, 1.0));
-
 
   //Visualization Hooks
   Tiny::event.handler = [&](){
@@ -210,5 +224,13 @@ int main( int argc, char* args[] ) {
 
   });
 
+  cout<<world.AGE<<endl;
+
+  Tiny::quit();
+
+  if(parse::option.contains("voxel"))
+    voxel::ize(world, parse::option["voxel"]);
+
   return 0;
+
 }

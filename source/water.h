@@ -16,7 +16,6 @@ struct Drop{
   float sediment = 0.0; //Sediment concentration
 
   //Parameters
-  const float density = 1.0;  //This gives varying amounts of inertia and stuff...
   const float evapRate = 0.001;
   const float depositionRate = 1.2*0.08;
   const float minVol = 0.01;
@@ -98,11 +97,15 @@ bool Drop::descend(glm::vec3 n, float* h, float* p, float* b, float* track, floa
   //Effective Parameter Set
   /* Higher plant density means less erosion */
   float effD = depositionRate*1.0-pd[ind];//max(0.0, );
+  //float effD = depositionRate;
+
   if(effD < 0) effD = 0;
 
   /* Higher Friction, Lower Evaporation in Streams
   makes particles prefer established streams -> "curvy" */
 
+  //float effF = friction;
+  //float effR = evapRate;
   float effF = friction*(1.0-p[ind]);
   float effR = evapRate*(1.0-0.2*p[ind]);
 
