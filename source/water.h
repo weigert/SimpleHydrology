@@ -111,26 +111,33 @@ bool Drop::descend(glm::vec3 n, float* track, float* mx, float* my, glm::ivec2 d
   float effR = evapRate;//*(1.0-0.2*p[ind]);
 
 
-  if(age > 500)
+  if(age > 100){
     return false;
+
+  }
 
   //Particle is Not Accelerated
   //if(length(vec2(n.x, n.z))*effF < 1E-5)
   //  return false;
+
+
 
   // Functioning Version
   track[ind] += volume;
   mx[ind] += volume*speed.x;
   my[ind] += volume*speed.y;
 
-  speed = mix(speed, vec2(n.x, n.z), n.y);
+
+  speed += vec2(n.x, n.z)/volume;
 
   vec2 fspeed = vec2(World::momentumx[ind], World::momentumy[ind]);
-  if(length(fspeed) > 0 && p[ind] > 0)
-    speed = mix(speed, fspeed/p[ind], p[ind]/(volume + p[ind]));
+  speed += 1.0f/(volume + p[ind])*fspeed;
 
   speed = sqrt(2.0f)*normalize(speed);
+
   pos   += speed;
+
+
 
   //New Position
   int nind = (int)pos.x*dim.y+(int)pos.y;
@@ -148,7 +155,7 @@ bool Drop::descend(glm::vec3 n, float* track, float* mx, float* my, glm::ivec2 d
    }
 
   //Mass-Transfer (in MASS)
-  float c_eq = h[ind]-h[nind];
+  float c_eq = (1.0f+p[ind])*(h[ind]-h[nind]);
   if(c_eq < 0) c_eq = 0;//max(0.0, (h[ind]-h[nind]));
   float cdiff = c_eq - sediment;
   sediment += effD*cdiff;

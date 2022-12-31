@@ -5,7 +5,7 @@
 
 #define WSIZE 512
 #define FREQUENCY 1
-#define SCALE 100
+#define SCALE 80
 
 #include "source/vertexpool.h"
 #include "source/world.h"
@@ -202,7 +202,7 @@ int main( int argc, char* args[] ) {
 
         if(viewmomentum)
         map.raw(image::make([&](int i){
-          double t1 = erf(world.waterpath[i]/3.0f);
+          double t1 = erf(world.waterpath[i]);
           double t2 = world.waterpool[i];
           glm::vec4 color = glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(0.2, 0.5, 1.0, 1.0), t1);
           if(t2 > 0.0) color = glm::mix(color, glm::vec4(0.15, 0.15, 0.45, 1.0), 1.0 - t2);
