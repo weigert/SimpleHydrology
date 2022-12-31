@@ -1,5 +1,4 @@
 #include "vegetation.h"
-#include "water.h"
 
 class World{
 public:
@@ -11,14 +10,17 @@ public:
   int SEED = 0;
   glm::ivec2 dim = glm::vec2(WSIZE, WSIZE);  //Size of the heightmap array
 
-  float heightmap[WSIZE*WSIZE] = {0.0};    //Flat Array
+  static float heightmap[WSIZE*WSIZE];    //Flat Array
 
-  float waterpath[WSIZE*WSIZE] = {0.0};    //Water Path Storage (Rivers)
-  float waterpool[WSIZE*WSIZE] = {0.0};    //Water Pool Storage (Lakes / Ponds)
+  static float waterpath[WSIZE*WSIZE];    //Water Path Storage (Rivers)
+  static float waterpool[WSIZE*WSIZE];    //Water Pool Storage (Lakes / Ponds)
+
+  static float momentumx[WSIZE*WSIZE];    //Momentum X Storage (Rivers)
+  static float momentumy[WSIZE*WSIZE];    //Momentum Y Storage (Rivers)
 
   //Trees
   std::vector<Plant> trees;
-  float plantdensity[WSIZE*WSIZE] = {0.0}; //Density for Plants
+  static float plantdensity[WSIZE*WSIZE]; //Density for Plants
 
   //Erosion Process
   bool active = false;
@@ -39,6 +41,18 @@ public:
 
 
 };
+
+float World::heightmap[WSIZE*WSIZE] = {0.0};    //Flat Array
+
+float World::waterpath[WSIZE*WSIZE] = {0.0};    //Water Path Storage (Rivers)
+float World::waterpool[WSIZE*WSIZE] = {0.0};    //Water Pool Storage (Lakes / Ponds)
+
+float World::momentumx[WSIZE*WSIZE] = {0.0};    //Momentum X Storage (Rivers)
+float World::momentumy[WSIZE*WSIZE] = {0.0};    //Momentum Y Storage (Rivers)
+
+float World::plantdensity[WSIZE*WSIZE] = {0.0}; //Density for Plants
+
+#include "water.h"
 
 /*
 ===================================================
@@ -85,6 +99,8 @@ void World::erode(int cycles){
 
   //Track the Movement of all Particles
   float track[dim.x*dim.y] = {0.0f};
+  float mx[dim.x*dim.y] = {0.0f};
+  float my[dim.x*dim.y] = {0.0f};
 
   //Do a series of iterations!
   for(int i = 0; i < cycles; i++){
@@ -95,7 +111,7 @@ void World::erode(int cycles){
 
     while(true){
 
-      while(drop.descend(normal((int)drop.pos.x * dim.y + (int)drop.pos.y), heightmap, waterpath, waterpool, track, plantdensity, dim, SCALE));
+      while(drop.descend(normal((int)drop.pos.x * dim.y + (int)drop.pos.y), track, mx, my, dim, SCALE));
       if(!drop.flood(heightmap, waterpool, dim))
         break;
 
@@ -105,8 +121,14 @@ void World::erode(int cycles){
 
   //Update Path
   float lrate = 0.01;
-  for(int i = 0; i < dim.x*dim.y; i++)
-    waterpath[i] = (1.0-lrate)*waterpath[i] + lrate*50.0f*track[i]/(1.0f + 50.0f*track[i]);
+  for(int i = 0; i < dim.x*dim.y; i++){
+
+    waterpath[i] = (1.0-lrate)*waterpath[i] + lrate*track[i];///(1.0f + 50.0f*track[i]);
+
+    momentumx[i] = (1.0-lrate)*momentumx[i] + lrate*mx[i];
+    momentumy[i] = (1.0-lrate)*momentumy[i] + lrate*my[i];
+
+  }
 
 }
 
@@ -157,7 +179,7 @@ bool World::grow(){
 
     //If the tree is in a pool or in a stream, kill it
     if(waterpool[trees[i].index] > 0.0 ||
-       waterpath[trees[i].index] > 0.2 ||
+       waterpath[trees[i].index] > 0.5 ||
        rand()%1000 == 0 ){ //Random Death Chance
          trees[i].root(plantdensity, dim, -1.0);
          trees.erase(trees.begin()+i);

@@ -9,6 +9,7 @@ const int HEIGHT = 800;
 
 bool paused = true;
 bool viewmap = false;
+bool viewmomentum = false;
 
 //Coloring
 float steepness = 0.8;
@@ -73,7 +74,7 @@ void updatemap(Vertexpool<Vertex>& vertexpool, World& world){
     bool water = (world.waterpool[ind] > 0);
     height += SCALE*world.waterpool[ind];
 
-    float p = world.waterpath[ind];
+    float p = erf(world.waterpath[ind]);
     glm::vec3 color;
 
     if(water) color = waterColor;

@@ -65,8 +65,6 @@ int main( int argc, char* args[] ) {
   indexmap(vertexpool, world);
   updatemap(vertexpool, world);
 
-  cout<<"Ayy"<<endl;
-
   //Texture for Hydrology Map Visualization
   Texture map(image::make([&](int i){
     double t1 = world.waterpath[i];
@@ -96,6 +94,8 @@ int main( int argc, char* args[] ) {
     if(!Tiny::event.press.empty() && Tiny::event.press.back() == SDLK_m)
       viewmap = !viewmap;
 
+    if(!Tiny::event.press.empty() && Tiny::event.press.back() == SDLK_n)
+      viewmomentum = !viewmomentum;
   };
 
   Tiny::view.interface = [](){};
@@ -199,11 +199,21 @@ int main( int argc, char* args[] ) {
 
       //Redraw the Path and Death Image
       if(viewmap){
+
+        if(viewmomentum)
         map.raw(image::make([&](int i){
-          double t1 = world.waterpath[i];
+          double t1 = erf(world.waterpath[i]/3.0f);
           double t2 = world.waterpool[i];
           glm::vec4 color = glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(0.2, 0.5, 1.0, 1.0), t1);
           if(t2 > 0.0) color = glm::mix(color, glm::vec4(0.15, 0.15, 0.45, 1.0), 1.0 - t2);
+          return color;
+        }, world.dim));
+
+        else
+        map.raw(image::make([&](int i){
+          double mx = world.momentumx[i];
+          double my = world.momentumy[i];
+          glm::vec4 color = abs(glm::vec4(erf(mx), erf(my), 0.0, 1.0));
           return color;
         }, world.dim));
       }

@@ -26,7 +26,7 @@ struct Drop{
   //Number of Spills Left
   int spill = 0;
 
-  bool descend(glm::vec3 n, float* h, float* path, float* pool, float* track, float* pd, glm::ivec2 dim, float scale);
+  bool descend(glm::vec3 n, float* track, float* mx, float* my, glm::ivec2 dim, float scale);
   bool flood(float* h, float* pool, glm::ivec2 dim);
 
   static void cascade(vec2 pos, glm::ivec2 dim, float* h, float* p){
@@ -83,7 +83,14 @@ struct Drop{
 
 };
 
-bool Drop::descend(glm::vec3 n, float* h, float* p, float* b, float* track, float* pd, glm::ivec2 dim, float scale){
+bool Drop::descend(glm::vec3 n, float* track, float* mx, float* my, glm::ivec2 dim, float scale){
+
+  static float* h = World::heightmap;
+  static float* p = World::waterpath;
+  static float* b = World::waterpool;
+  //static float* mx = World::momentumx;
+  //static float* my = World::momentumy;
+  static float* pd = World::plantdensity;
 
   if(volume < minVol)
     return false;
@@ -91,9 +98,6 @@ bool Drop::descend(glm::vec3 n, float* h, float* p, float* b, float* track, floa
   //Initial Position
   glm::ivec2 ipos = pos;
   int ind = ipos.x*dim.y+ipos.y;
-
-  //Add to Path
-  track[ind] += volume;
 
   //Effective Parameter Set
   /* Higher plant density means less erosion */
@@ -103,14 +107,28 @@ bool Drop::descend(glm::vec3 n, float* h, float* p, float* b, float* track, floa
   /* Higher Friction, Lower Evaporation in Streams
   makes particles prefer established streams -> "curvy" */
 
-  float effF = friction*(1.0-p[ind]);
-  float effR = evapRate*(1.0-0.2*p[ind]);
+  float effF = friction*(1.0-erf(p[ind]));
+  float effR = evapRate;//*(1.0-0.2*p[ind]);
 
-  //Particle is Not Accelerated
-  if(length(vec2(n.x, n.z))*effF < 1E-5)
+
+  if(age > 500)
     return false;
 
-  speed = mix(vec2(n.x, n.z), speed, effF);
+  //Particle is Not Accelerated
+  //if(length(vec2(n.x, n.z))*effF < 1E-5)
+  //  return false;
+
+  // Functioning Version
+  track[ind] += volume;
+  mx[ind] += volume*speed.x;
+  my[ind] += volume*speed.y;
+
+  speed = mix(speed, vec2(n.x, n.z), n.y);
+
+  vec2 fspeed = vec2(World::momentumx[ind], World::momentumy[ind]);
+  if(length(fspeed) > 0 && p[ind] > 0)
+    speed = mix(speed, fspeed/p[ind], p[ind]/(volume + p[ind]));
+
   speed = sqrt(2.0f)*normalize(speed);
   pos   += speed;
 
