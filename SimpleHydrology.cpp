@@ -202,7 +202,7 @@ int main( int argc, char* args[] ) {
 
         if(viewmomentum)
         map.raw(image::make([&](int i){
-          double t1 = erf(world.waterpath[i]);
+          double t1 = erf(0.2f*world.waterpath[i]);
           double t2 = world.waterpool[i];
           glm::vec4 color = glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(0.2, 0.5, 1.0, 1.0), t1);
           if(t2 > 0.0) color = glm::mix(color, glm::vec4(0.15, 0.15, 0.45, 1.0), 1.0 - t2);
@@ -211,9 +211,12 @@ int main( int argc, char* args[] ) {
 
         else
         map.raw(image::make([&](int i){
-          double mx = world.momentumx[i];
-          double my = world.momentumy[i];
-          glm::vec4 color = abs(glm::vec4(erf(mx), erf(my), 0.0, 1.0));
+
+          float mx = world.momentumx[i];
+          float my = world.momentumy[i];
+
+          glm::vec4 color = glm::vec4(abs(erf(mx)), 0, abs(erf(my)), 1.0);
+
           return color;
         }, world.dim));
       }

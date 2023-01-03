@@ -120,7 +120,7 @@ void World::erode(int cycles){
   }
 
   //Update Path
-  float lrate = 0.01;
+  float lrate = 0.1;
   for(int i = 0; i < dim.x*dim.y; i++){
 
     waterpath[i] = (1.0-lrate)*waterpath[i] + lrate*track[i];///(1.0f + 50.0f*track[i]);

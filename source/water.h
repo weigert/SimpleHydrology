@@ -36,17 +36,44 @@ struct Drop{
 
     if(p[ind] > 0) return; //Don't do this with water
 
-    //Neighbor Positions (8-Way)
-    const int nx[8] = {-1,-1,-1, 0, 0, 1, 1, 1};
-    const int ny[8] = {-1, 0, 1,-1, 1,-1, 0, 1};
+    static const ivec2 n[] = {
+      ivec2(-1, -1),
+      ivec2(-1,  0),
+      ivec2(-1,  1),
+      ivec2( 0, -1),
+      ivec2( 0,  1),
+      ivec2( 1, -1),
+      ivec2( 1,  0),
+      ivec2( 1,  1)
+    };
+
+    //No Out-Of-Bounds
+
+    struct Point {
+      ivec2 pos;
+      double h;
+    };
+    Point sn[8];
+    int num = 0;
+    for(auto& nn: n){
+      ivec2 npos = ipos + nn;
+      if(npos.x >=dim.x || npos.y >=dim.y
+         || npos.x < 0 || npos.y < 0) continue;
+      sn[num++] = { npos, h[npos.x * dim.y + npos.y] };
+    }
+
+    sort(std::begin(sn), std::begin(sn) + num, [&](const Point& a, const Point& b){
+      return a.h > b.h;
+    });
 
     const float maxdiff = 0.01f;
-    const float settling = 0.1f;
+    const float settling = 0.5f;
 
     //Iterate over all Neighbors
-    for(int m = 0; m < 8; m++){
+    for (int i = 0; i < num; ++i) {
 
-      ivec2 npos = ipos + ivec2(nx[m], ny[m]);
+      auto& npos = sn[i].pos;
+
       int nind = npos.x * dim.y + npos.y;
 
       if(npos.x >= dim.x || npos.y >= dim.y
@@ -110,10 +137,9 @@ bool Drop::descend(glm::vec3 n, float* track, float* mx, float* my, glm::ivec2 d
   float effF = friction*(1.0-erf(p[ind]));
   float effR = evapRate;//*(1.0-0.2*p[ind]);
 
-
-  if(age > 100){
+  if(age > 500){
+    h[ind] += sediment;
     return false;
-
   }
 
   //Particle is Not Accelerated
@@ -121,23 +147,34 @@ bool Drop::descend(glm::vec3 n, float* track, float* mx, float* my, glm::ivec2 d
   //  return false;
 
 
-
-  // Functioning Version
-  track[ind] += volume;
-  mx[ind] += volume*speed.x;
-  my[ind] += volume*speed.y;
-
-
-  speed += vec2(n.x, n.z)/volume;
+  float dt = 1.0f;
+  if(length(speed) > 0)
+    dt = sqrt(2)/length(speed);
 
   vec2 fspeed = vec2(World::momentumx[ind], World::momentumy[ind]);
-  speed += 1.0f/(volume + p[ind])*fspeed;
 
-  speed = sqrt(2.0f)*normalize(speed);
+  float transfer = 0.0f;
+  if(length(fspeed) > 0 && length(speed) > 0)
+    transfer = dot(normalize(fspeed), normalize(speed));
+
+  speed += 2*dt*vec2(n.x, n.z)/volume;
+
+  speed += transfer*dt/(volume + p[ind])*fspeed;
+
+  if(length(speed) > 0)
+    speed = sqrt(2.0f)*normalize(speed);
 
   pos   += speed;
 
+  // Functioning Version
+  track[ind] += dt*volume;
+  mx[ind] += dt*volume*speed.x;
+  my[ind] += dt*volume*speed.y;
 
+//  vec2 tspeed = vec2(0.0f);
+//  if(length(fspeed) > 0 && length(speed) > 0)
+//    tspeed = normalize(mix(normalize(fspeed), normalize(speed), transfer));
+//  else tspeed = speed;
 
   //New Position
   int nind = (int)pos.x*dim.y+(int)pos.y;
@@ -149,17 +186,13 @@ bool Drop::descend(glm::vec3 n, float* track, float* mx, float* my, glm::ivec2 d
        return false;
    }
 
-   //Particle is in Pool
-   if(b[nind] > 0.0){
-     return false;
-   }
-
   //Mass-Transfer (in MASS)
-  float c_eq = (1.0f+p[ind])*(h[ind]-h[nind]);
+  float c_eq = (1.0f+10*erf(0.2*p[ind]))*(h[ind]-h[nind]);
   if(c_eq < 0) c_eq = 0;//max(0.0, (h[ind]-h[nind]));
   float cdiff = c_eq - sediment;
-  sediment += effD*cdiff;
-  h[ind] -= effD*cdiff;
+
+  sediment += dt*effD*cdiff;
+  h[ind] -= dt*effD*cdiff;
 
   //Evaporate (Mass Conservative)
   sediment /= (1.0-effR);
