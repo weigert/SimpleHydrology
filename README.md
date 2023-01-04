@@ -79,4 +79,4 @@ https://github.com/Roipo/SimpleHydrology
 ## License
 MIT License.
 
-See my website for a [more detailed copyright notice](https://weigert.vsos.ethz.ch/copyright-notice/).
+See my website for a [more detailed copyright notice](https://nickmcd.me/copyright-notice/).
