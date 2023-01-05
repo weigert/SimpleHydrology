@@ -9,9 +9,11 @@ the method for descending / eroding
 the landscape.
 */
 
-struct Drop{
+struct Drop {
 
   Drop(glm::vec2 _pos){ pos = _pos; }   // Construct at Position
+
+  // Properties
 
   int age = 0;
   glm::vec2 pos;
@@ -21,12 +23,14 @@ struct Drop{
   float sediment = 0.0;                 // Droplet Sediment Concentration
 
   //Parameters
-  const float density = 1.0;  //This gives varying amounts of inertia and stuff...
-  const float evapRate = 0.001;
-  const float depositionRate = 1.2*0.08;
-  const float minVol = 0.01;
-  const float friction = 0.25;
-  const float volumeFactor = 0.5; //"Water Deposition Rate"
+
+  static float maxAge;                  // Maximum Droplet Age
+  static float minVol;                  // Minimum Droplet Volume
+  static float evapRate;                // Droplet Evaporation Rate
+  static float depositionRate;          // Droplet Deposition Rate
+  static float entrainment;             // Additional Sediment per Discharge
+  static float gravity;                 // Gravity Force Scale
+  static float momentumTransfer;        // Rate of Momentum Transfer
 
   // Main Methods
 
@@ -34,70 +38,78 @@ struct Drop{
 
 };
 
+// Parameter Definitions
+
+float Drop::evapRate = 0.001;
+float Drop::depositionRate = 0.1;
+float Drop::minVol = 0.01;
+float Drop::maxAge = 500;
+
+float Drop::entrainment = 10.0f;
+float Drop::gravity = 1.0f;
+float Drop::momentumTransfer = 1.0f;
+
+/*
+================================================================================
+                        Drop Method Implementations
+================================================================================
+*/
+
 bool Drop::descend(float* track, float* mx, float* my, float scale){
+
+  // Pointers to Relevant Storage Buffers, Parameters
+
+  glm::ivec2 dim = World::dim;
+  glm::vec3 n = World::normal(pos);
 
   static float* h = World::heightmap;
   static float* p = World::discharge;
   static float* pd = Vegetation::density;
-  glm::ivec2 dim = World::dim;
-  glm::vec3 n = World::normal((int)pos.x * dim.y + (int)pos.y);
-
-  if(volume < minVol)
-    return false;
 
   //Initial Position
+
   glm::ivec2 ipos = pos;
   int ind = ipos.x*dim.y+ipos.y;
 
-  //Effective Parameter Set
-  /* Higher plant density means less erosion */
+  // Effective Parameter Set
+
   float effD = depositionRate*1.0-pd[ind];//max(0.0, );
   if(effD < 0) effD = 0;
 
-  /* Higher Friction, Lower Evaporation in Streams
-  makes particles prefer established streams -> "curvy" */
-
-  float effF = friction*(1.0-erf(p[ind]));
-  float effR = evapRate;//*(1.0-0.2*p[ind]);
-
-  if(age > 500){
+  if(age > maxAge){
     h[ind] += sediment;
     return false;
   }
 
-  //Particle is Not Accelerated
-  //if(length(vec2(n.x, n.z))*effF < 1E-5)
-  //  return false;
+  if(volume < minVol){
+    h[ind] += sediment;
+    return false;
+  }
 
+  // Apply Forces to Particle
 
-  float dt = 1.0f;
-  if(length(speed) > 0)
-    dt = sqrt(2)/length(speed);
+  // Gravity Force
+
+  speed += gravity*vec2(n.x, n.z)/volume;
+
+  // Momentum Transfer Force
 
   vec2 fspeed = vec2(World::momentumx[ind], World::momentumy[ind]);
-
-  float transfer = 0.0f;
   if(length(fspeed) > 0 && length(speed) > 0)
-    transfer = dot(normalize(fspeed), normalize(speed));
+    speed += momentumTransfer*dot(normalize(fspeed), normalize(speed))/(volume + p[ind])*fspeed;
 
-  speed += dt*2.0f*vec2(n.x, n.z)/volume;
-
-  speed += transfer*dt/(volume + p[ind])*fspeed;
+  // Dynamic Time-Step, Update
 
   if(length(speed) > 0)
     speed = sqrt(2.0f)*normalize(speed);
 
   pos   += speed;
 
-  // Functioning Version
-  track[ind] += dt*volume;
-  mx[ind] += dt*volume*speed.x;
-  my[ind] += dt*volume*speed.y;
+  // Update Discharge, Momentum Tracking Maps
 
-//  vec2 tspeed = vec2(0.0f);
-//  if(length(fspeed) > 0 && length(speed) > 0)
-//    tspeed = normalize(mix(normalize(fspeed), normalize(speed), transfer));
-//  else tspeed = speed;
+  track[ind] += volume;
+  mx[ind] += volume*speed.x;
+  my[ind] += volume*speed.y;
 
   //New Position
   int nind = (int)pos.x*dim.y+(int)pos.y;
@@ -106,30 +118,28 @@ bool Drop::descend(float* track, float* mx, float* my, float scale){
   float h2;
   if(!glm::all(glm::greaterThanEqual(pos, glm::vec2(0))) ||
      !glm::all(glm::lessThan((glm::ivec2)pos, dim))){
-       h2 = h[ind]-0.001;
+       h2 = h[ind];//-0.002;
    } else {
      h2 = h[nind];
    }
 
-    //Mass-Transfer (in MASS)
-    float c_eq = (1.0f+10*erf(0.2*p[ind]))*(h[ind]-h2);
-    if(c_eq < 0) c_eq = 0;//max(0.0, (h[ind]-h[nind]));
-    float cdiff = c_eq - sediment;
+  //Mass-Transfer (in MASS)
+  float c_eq = (1.0f+entrainment*World::getDischarge(ipos))*(h[ind]-h2);
+  if(c_eq < 0) c_eq = 0;//max(0.0, (h[ind]-h[nind]));
+  float cdiff = c_eq - sediment;
 
-    sediment += dt*effD*cdiff;
-    h[ind] -= dt*effD*cdiff;
+  sediment += effD*cdiff;
+  h[ind] -= effD*cdiff;
 
-    //Evaporate (Mass Conservative)
-    sediment /= (1.0-effR);
-    volume *= (1.0-effR);
-
+  //Evaporate (Mass Conservative)
+  sediment /= (1.0-evapRate);
+  volume *= (1.0-evapRate);
 
   //Out-Of-Bounds
-  if(!glm::all(glm::greaterThanEqual(pos, glm::vec2(0))) ||
-     !glm::all(glm::lessThan((glm::ivec2)pos, dim))){
-       volume = 0.0;
-       return false;
-   }
+  if(World::oob(pos)){
+    volume = 0.0;
+    return false;
+  }
 
   World::cascade(pos);
 

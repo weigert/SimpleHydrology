@@ -75,10 +75,10 @@ void updatemap(Vertexpool<Vertex>& vertexpool, World& world){
     int ind = i*world.dim.y+j;
     float height = SCALE*world.heightmap[ind];
 
-    float p = erf(world.discharge[ind]);
+    float p = World::getDischarge(vec2(i, j));
     glm::vec3 color = flatColor;
 
-    glm::vec3 normal = world.normal(i*world.dim.y+j);
+    glm::vec3 normal = world.normal(vec2(i, j));
     if(normal.y < steepness)
       color = steepColor;
 

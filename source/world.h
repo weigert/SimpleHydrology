@@ -13,7 +13,7 @@ class World {
 
 public:
 
-  int SEED = 0;
+  static int SEED;
   static glm::ivec2 dim;                      //Size of the Map
 
   // Storage Arrays
@@ -23,15 +23,29 @@ public:
   static float momentumx[WSIZE*WSIZE];        //Momentum X Storage (Rivers)
   static float momentumy[WSIZE*WSIZE];        //Momentum Y Storage (Rivers)
 
+  // Parameters
+
+  static float lrate;
+  static float dischargeThresh;
+  static float maxdiff;
+  static float settling;
+
   // Main Update Methods
 
-  void generate();                            // Initialize Heightmap
-  static glm::vec3 normal(int index);         // Compute Surface Normal
-  void erode(int cycles);                     // Erosion Update Step
+  static void generate();                     // Initialize Heightmap
+  static bool oob(ivec2 pos);                 // Check Out-Of-Bounds
+
+  static float height(vec2 pos);              // Get Surface Height
+  static float getDischarge(vec2 pos);
+
+  static glm::vec3 normal(vec2 pos);          // Compute Surface Normal
+  static void erode(int cycles);              // Erosion Update Step
   static void cascade(vec2 pos);              // Perform Sediment Cascade
+
 
 };
 
+int World::SEED = 0;
 glm::ivec2 World::dim = glm::vec2(WSIZE, WSIZE);
 
 float World::heightmap[WSIZE*WSIZE] = {0.0};    //Flat Array
@@ -39,24 +53,47 @@ float World::discharge[WSIZE*WSIZE] = {0.0};    //Water Path Storage (Rivers)
 float World::momentumx[WSIZE*WSIZE] = {0.0};    //Momentum X Storage (Rivers)
 float World::momentumy[WSIZE*WSIZE] = {0.0};    //Momentum Y Storage (Rivers)
 
+float World::lrate = 0.1f;
+float World::dischargeThresh = 0.5f;
+float World::maxdiff = 0.01f;
+float World::settling = 0.5f;
+
 #include "vegetation.h"
 #include "water.h"
 
 /*
-===================================================
-          WORLD GENERATING FUNCTIONS
-===================================================
+================================================================================
+                        World Method Implementations
+================================================================================
 */
 
-glm::vec3 World::normal(int index){
+inline bool World::oob(ivec2 pos){
+  if(pos.x >= dim.x) return true;
+  if(pos.y >= dim.y) return true;
+  if(pos.x < 0) return true;
+  if(pos.y < 0) return true;
+  return false;
+}
+
+inline float World::height(vec2 pos){
+  return heightmap[(int)pos.x * dim.y + (int)pos.y];
+}
+
+inline float World::getDischarge(vec2 pos){
+  return erf(dischargeThresh*discharge[(int)pos.x * dim.y + (int)pos.y]);
+}
+
+glm::vec3 World::normal(vec2 pos){
+
+  glm::vec3 n = glm::vec3(0);
 
   //Two large triangels adjacent to the plane (+Y -> +X) (-Y -> -X)
-  glm::vec3 n = glm::cross(glm::vec3(0.0, SCALE*(heightmap[index+1]-heightmap[index]), 1.0), glm::vec3(1.0, SCALE*(heightmap[index+dim.y]-heightmap[index]), 0.0));
-  n += glm::cross(glm::vec3(0.0, SCALE*(heightmap[index-1]-heightmap[index]), -1.0), glm::vec3(-1.0, SCALE*(heightmap[index-dim.y]-heightmap[index]), 0.0));
+  n += glm::cross(glm::vec3( 0.0, SCALE*(height(pos+glm::vec2(0,1))-height(pos)), 1.0), glm::vec3( 1.0, SCALE*(height(pos+glm::vec2(1,0))-height(pos)), 0.0));
+  n += glm::cross(glm::vec3( 0.0, SCALE*(height(pos-glm::vec2(0,1))-height(pos)),-1.0), glm::vec3(-1.0, SCALE*(height(pos-glm::vec2(1,0))-height(pos)), 0.0));
 
   //Two Alternative Planes (+X -> -Y) (-X -> +Y)
-  n += glm::cross(glm::vec3(1.0, SCALE*(heightmap[index+dim.y]-heightmap[index]), 0.0), glm::vec3(0.0, SCALE*(heightmap[index-1]-heightmap[index]), -1.0));
-  n += glm::cross(glm::vec3(-1.0, SCALE*(heightmap[index-dim.y]-heightmap[index]), 0.0), glm::vec3(0.0, SCALE*(heightmap[index+1]-heightmap[index]), 1.0));
+  n += glm::cross(glm::vec3( 1.0, SCALE*(height(pos+glm::vec2(1,0))-height(pos)), 0.0), glm::vec3( 0.0, SCALE*(height(pos-glm::vec2(0,1))-height(pos)),-1.0));
+  n += glm::cross(glm::vec3(-1.0, SCALE*(height(pos-glm::vec2(1,0))-height(pos)), 0.0), glm::vec3( 0.0, SCALE*(height(pos+glm::vec2(0,1))-height(pos)), 1.0));
 
   return glm::normalize(n);
 
@@ -86,10 +123,12 @@ void World::generate(){
     if(heightmap[i] > max) max = heightmap[i];
     if(heightmap[i] < min) min = heightmap[i];
   }
+
   //Normalize
   for(int i = 0; i < dim.x*dim.y; i++){
-    heightmap[i] = (heightmap[i] - min)/(max - min);//+1.0f*((float)((i/dim.y)*(i/dim.y))/dim.x/dim.x)*((float)((i%dim.y)*(i%dim.y))/dim.y/dim.y);
+    heightmap[i] = (heightmap[i] - min)/(max - min);
   }
+
 }
 
 /*
@@ -115,12 +154,10 @@ void World::erode(int cycles){
 
   }
 
-  //Update Path
-  float lrate = 0.1;
+  //Update Fields
   for(int i = 0; i < dim.x*dim.y; i++){
 
-    discharge[i] = (1.0-lrate)*discharge[i] + lrate*track[i];///(1.0f + 50.0f*track[i]);
-
+    discharge[i] = (1.0-lrate)*discharge[i] + lrate*track[i];
     momentumx[i] = (1.0-lrate)*momentumx[i] + lrate*mx[i];
     momentumy[i] = (1.0-lrate)*momentumy[i] + lrate*my[i];
 
@@ -152,12 +189,13 @@ void World::cascade(vec2 pos){
     ivec2 pos;
     double h;
   };
-  Point sn[8];
+
+  static Point sn[8];
   int num = 0;
   for(auto& nn: n){
     ivec2 npos = ipos + nn;
-    if(npos.x >=dim.x || npos.y >=dim.y
-       || npos.x < 0 || npos.y < 0) continue;
+    if(World::oob(npos))
+      continue;
     sn[num++] = { npos, h[npos.x * dim.y + npos.y] };
   }
 
@@ -165,20 +203,13 @@ void World::cascade(vec2 pos){
     return a.h > b.h;
   });
 
-  const float maxdiff = 0.01f;
-  const float settling = 0.5f;
-
   //Iterate over all Neighbors
   for (int i = 0; i < num; ++i) {
 
     auto& npos = sn[i].pos;
 
-    int nind = npos.x * dim.y + npos.y;
-
-    if(npos.x >= dim.x || npos.y >= dim.y
-       || npos.x < 0 || npos.y < 0) continue;
-
     //Full Height-Different Between Positions!
+    int nind = npos.x * dim.y + npos.y;
     float diff = (h[ind] - h[nind]);
     if(diff == 0)   //No Height Difference
       continue;
