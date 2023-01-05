@@ -4,7 +4,7 @@
 
 #define WSIZE 512
 #define FREQUENCY 1
-#define SCALE 40
+#define SCALE 80
 
 #include "source/vertexpool.h"
 #include "source/world.h"
