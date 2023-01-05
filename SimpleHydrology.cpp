@@ -14,6 +14,7 @@
 int main( int argc, char* args[] ) {
 
   //Initialize the World
+
   World world;
 
   if(argc == 2)
@@ -67,10 +68,8 @@ int main( int argc, char* args[] ) {
 
   //Texture for Hydrology Map Visualization
   Texture map(image::make([&](int i){
-    double t1 = world.waterpath[i];
-    double t2 = world.waterpool[i];
+    double t1 = world.discharge[i];
     glm::vec4 color = glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(0.2, 0.5, 1.0, 1.0), t1);
-    if(t2 > 0.0) color = glm::mix(color, glm::vec4(0.15, 0.15, 0.45, 1.0), 1.0 - t2);
     return color;
   }, world.dim));
 
@@ -197,29 +196,27 @@ int main( int argc, char* args[] ) {
     modelbuf.fill(treemodels);
     treeparticle.SIZE = treemodels.size();    //  cout<<world.trees.size()<<endl;
 
-      //Redraw the Path and Death Image
-      if(viewmap){
+    //Redraw the Discharge and Momentum Maps
+    if(viewmap){
 
-        if(viewmomentum)
-        map.raw(image::make([&](int i){
-          double t1 = erf(0.2f*world.waterpath[i]);
-          double t2 = world.waterpool[i];
-          glm::vec4 color = glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(0.2, 0.5, 1.0, 1.0), t1);
-          if(t2 > 0.0) color = glm::mix(color, glm::vec4(0.15, 0.15, 0.45, 1.0), 1.0 - t2);
-          return color;
-        }, world.dim));
+      if(viewmomentum)
+      map.raw(image::make([&](int i){
+        double t1 = erf(0.2f*world.discharge[i]);
+        glm::vec4 color = glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(0.2, 0.5, 1.0, 1.0), t1);
+        return color;
+      }, world.dim));
 
-        else
-        map.raw(image::make([&](int i){
+      else
+      map.raw(image::make([&](int i){
 
-          float mx = world.momentumx[i];
-          float my = world.momentumy[i];
+        float mx = world.momentumx[i];
+        float my = world.momentumy[i];
 
-          glm::vec4 color = glm::vec4(abs(erf(mx)), 0, abs(erf(my)), 1.0);
+        glm::vec4 color = glm::vec4(abs(erf(mx)), 0, abs(erf(my)), 1.0);
 
-          return color;
-        }, world.dim));
-      }
+        return color;
+      }, world.dim));
+    }
 
   });
 
