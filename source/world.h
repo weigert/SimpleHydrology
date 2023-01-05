@@ -1,6 +1,8 @@
 #ifndef SIMPLEHYDROLOGY_WORLD
 #define SIMPLEHYDROLOGY_WORLD
 
+#include "include/FastNoiseLite.h"
+
 /*
 SimpleHydrology - world.h
 
@@ -108,17 +110,22 @@ void World::generate(){
 
   std::cout<<"... generating height ..."<<std::endl;
 
-  //Initialize Heightmap
-  noise::module::Perlin perlin;
+  static FastNoiseLite noise; //Noise System
+  float octaves = 8.0f;       //
+  float lacunarity = 2.0f;    //
+  float gain = 0.6f;          //
+  float frequency = 1.0f;     //
 
-  //Mountainy:
-  perlin.SetOctaveCount(8);
-  perlin.SetFrequency(FREQUENCY);
-  perlin.SetPersistence(0.6);
+  noise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
+  noise.SetFractalType(FastNoiseLite::FractalType_FBm);
+  noise.SetFractalOctaves(octaves);
+  noise.SetFractalLacunarity(lacunarity);
+  noise.SetFractalGain(gain);
+  noise.SetFrequency(frequency);
 
   float min, max = 0.0;
   for(int i = 0; i < dim.x*dim.y; i++){
-    heightmap[i] = perlin.GetValue((i/dim.y)*(1.0/dim.x), (i%dim.y)*(1.0/dim.y), SEED);
+    heightmap[i] = noise.GetNoise((i/dim.y)*(1.0/dim.x), (i%dim.y)*(1.0/dim.y), (double)(SEED%10000));
     if(heightmap[i] > max) max = heightmap[i];
     if(heightmap[i] < min) min = heightmap[i];
   }

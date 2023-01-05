@@ -1,11 +1,10 @@
 #include <TinyEngine/TinyEngine>
 #include <TinyEngine/camera>
 #include <TinyEngine/image>
-#include <noise/noise.h>
 
 #define WSIZE 512
 #define FREQUENCY 1
-#define SCALE 80
+#define SCALE 40
 
 #include "source/vertexpool.h"
 #include "source/world.h"
