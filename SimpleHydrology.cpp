@@ -108,7 +108,7 @@ int main( int argc, char* args[] ) {
     depth.uniform("dvp", dvp);
     vertexpool.render(GL_TRIANGLES);  //Render Surface Model
 
-    if(!world.trees.empty()){
+    if(!Vegetation::plants.empty()){
 
       //Render the Trees as a Particle System
       spritedepth.use();
@@ -133,7 +133,7 @@ int main( int argc, char* args[] ) {
     shader.uniform("lightStrength", lightStrength);
     vertexpool.render(GL_TRIANGLES);    //Render Model
 
-    if(!world.trees.empty()){
+    if(!Vegetation::plants.empty()){
 
       glm::mat4 orient = glm::rotate(glm::mat4(1.0f), glm::radians(180.0f-cam::rot), glm::vec3(0.0, 1.0, 0.0));
 
@@ -182,13 +182,13 @@ int main( int argc, char* args[] ) {
       return;
 
     world.erode(500*FREQUENCY*FREQUENCY); //Execute Erosion Cycles
-    world.grow();     //Grow Trees
+    Vegetation::grow();     //Grow Trees
 
     updatemap(vertexpool, world);
 
     //Update the Tree Particle System
     treemodels.clear();
-    for(auto& t: world.trees){
+    for(auto& t: Vegetation::plants){
       glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(t.pos.x, t.size + SCALE*world.heightmap[t.index], t.pos.y));
       model = glm::scale(model, glm::vec3(t.size));
       treemodels.push_back(model);

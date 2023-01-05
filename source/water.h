@@ -30,15 +30,17 @@ struct Drop{
 
   // Main Methods
 
-  bool descend(glm::vec3 n, float* track, float* mx, float* my, glm::ivec2 dim, float scale);
+  bool descend(float* track, float* mx, float* my, float scale);
 
 };
 
-bool Drop::descend(glm::vec3 n, float* track, float* mx, float* my, glm::ivec2 dim, float scale){
+bool Drop::descend(float* track, float* mx, float* my, float scale){
 
   static float* h = World::heightmap;
   static float* p = World::discharge;
-  static float* pd = World::plantdensity;
+  static float* pd = Vegetation::density;
+  glm::ivec2 dim = World::dim;
+  glm::vec3 n = World::normal((int)pos.x * dim.y + (int)pos.y);
 
   if(volume < minVol)
     return false;
@@ -129,8 +131,7 @@ bool Drop::descend(glm::vec3 n, float* track, float* mx, float* my, glm::ivec2 d
        return false;
    }
 
-
-  World::cascade(pos, dim, h);
+  World::cascade(pos);
 
   age++;
   return true;
