@@ -18,7 +18,6 @@ Use the makefile to compile the program.
     Erosion System:
     - gcc
     - glm
-    - libnoise
 
     Renderer:
     - TinyEngine (and sub dependencies)
