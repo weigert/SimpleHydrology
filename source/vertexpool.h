@@ -1,8 +1,5 @@
-/*
-================================================================================
-														TinyEngine Vertex Pool
-================================================================================
-*/
+#ifndef TINYENGINE_VERTEXPOOL
+#define TINYENGINE_VERTEXPOOL
 
 using namespace glm;
 
@@ -333,3 +330,5 @@ void render(const GLenum mode = GL_TRIANGLES, size_t first = 0, size_t length = 
 }
 
 };
+
+#endif

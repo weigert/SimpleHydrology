@@ -1,7 +1,11 @@
+#ifndef SIMPLEHYDROLOGY_MODEL
+#define SIMPLEHYDROLOGY_MODEL
+
 /*
-================================================================================
-                            Rendering Parameters
-================================================================================
+SimpleHydrology - model.h
+
+Defines our rendering parameters,
+and general visualization stuff.
 */
 
 const int WIDTH = 1200;
@@ -9,6 +13,7 @@ const int HEIGHT = 800;
 
 bool paused = true;
 bool viewmap = false;
+bool viewmomentum = false;
 
 //Coloring
 float steepness = 0.8;
@@ -70,18 +75,14 @@ void updatemap(Vertexpool<Vertex>& vertexpool, World& world){
     int ind = i*world.dim.y+j;
     float height = SCALE*world.heightmap[ind];
 
-    bool water = (world.waterpool[ind] > 0);
-    height += SCALE*world.waterpool[ind];
+    float p = World::getDischarge(vec2(i, j));
+    glm::vec3 color = flatColor;
 
-    float p = world.waterpath[ind];
-    glm::vec3 color;
-
-    if(water) color = waterColor;
-    else color = glm::mix(flatColor, waterColor, p);
-
-    glm::vec3 normal = world.normal(i*world.dim.y+j);
-    if(normal.y < steepness && !water)
+    glm::vec3 normal = world.normal(vec2(i, j));
+    if(normal.y < steepness)
       color = steepColor;
+
+    color = glm::mix(color, waterColor, p);
 
     vertexpool.fill(section, ind,
       glm::vec3(i, height, j),
@@ -92,3 +93,5 @@ void updatemap(Vertexpool<Vertex>& vertexpool, World& world){
   }
 
 }
+
+#endif

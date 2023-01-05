@@ -1,58 +1,110 @@
-#include "vegetation.h"
-#include "water.h"
+#ifndef SIMPLEHYDROLOGY_WORLD
+#define SIMPLEHYDROLOGY_WORLD
 
-class World{
+/*
+SimpleHydrology - world.h
+
+Defines our main storage buffers,
+world updating functions for erosion
+and vegetation.
+*/
+
+class World {
+
 public:
-  //Constructor
-  void generate();                      //Initialize Heightmap
-  void erode(int cycles);               //Erode with N Particles
-  bool grow();
 
-  int SEED = 0;
-  glm::ivec2 dim = glm::vec2(WSIZE, WSIZE);  //Size of the heightmap array
+  static int SEED;
+  static glm::ivec2 dim;                      //Size of the Map
 
-  float heightmap[WSIZE*WSIZE] = {0.0};    //Flat Array
+  // Storage Arrays
 
-  float waterpath[WSIZE*WSIZE] = {0.0};    //Water Path Storage (Rivers)
-  float waterpool[WSIZE*WSIZE] = {0.0};    //Water Pool Storage (Lakes / Ponds)
+  static float heightmap[WSIZE*WSIZE];        //Flat Array
+  static float discharge[WSIZE*WSIZE];        //Discharge Storage (Rivers)
+  static float momentumx[WSIZE*WSIZE];        //Momentum X Storage (Rivers)
+  static float momentumy[WSIZE*WSIZE];        //Momentum Y Storage (Rivers)
 
-  //Trees
-  std::vector<Plant> trees;
-  float plantdensity[WSIZE*WSIZE] = {0.0}; //Density for Plants
+  // Parameters
 
-  //Erosion Process
-  bool active = false;
+  static float lrate;
+  static float dischargeThresh;
+  static float maxdiff;
+  static float settling;
 
-  glm::vec3 normal(int index){
+  // Main Update Methods
 
-    //Two large triangels adjacent to the plane (+Y -> +X) (-Y -> -X)
-    glm::vec3 n = glm::cross(glm::vec3(0.0, SCALE*(heightmap[index+1]-heightmap[index] + waterpool[index+1] - waterpool[index]), 1.0), glm::vec3(1.0, SCALE*(heightmap[index+dim.y]+waterpool[index+dim.y]-heightmap[index]-waterpool[index]), 0.0));
-    n += glm::cross(glm::vec3(0.0, SCALE*(heightmap[index-1]-heightmap[index] + waterpool[index-1]-waterpool[index]), -1.0), glm::vec3(-1.0, SCALE*(heightmap[index-dim.y]-heightmap[index]+waterpool[index-dim.y]-waterpool[index]), 0.0));
+  static void generate();                     // Initialize Heightmap
+  static bool oob(ivec2 pos);                 // Check Out-Of-Bounds
 
-    //Two Alternative Planes (+X -> -Y) (-X -> +Y)
-    n += glm::cross(glm::vec3(1.0, SCALE*(heightmap[index+dim.y]-heightmap[index]+waterpool[index+dim.y]-waterpool[index]), 0.0), glm::vec3(0.0, SCALE*(heightmap[index-1]-heightmap[index]+waterpool[index-1]-waterpool[index]), -1.0));
-    n += glm::cross(glm::vec3(-1.0, SCALE*(heightmap[index+dim.y]-heightmap[index]+waterpool[index+dim.y]-waterpool[index]), 0.0), glm::vec3(0.0, SCALE*(heightmap[index+1]-heightmap[index]+waterpool[index+1]-waterpool[index]), 1.0));
+  static float height(vec2 pos);              // Get Surface Height
+  static float getDischarge(vec2 pos);
 
-    return glm::normalize(n);
-
-  }
+  static glm::vec3 normal(vec2 pos);          // Compute Surface Normal
+  static void erode(int cycles);              // Erosion Update Step
+  static void cascade(vec2 pos);              // Perform Sediment Cascade
 
 
 };
 
+int World::SEED = 1;
+glm::ivec2 World::dim = glm::vec2(WSIZE, WSIZE);
+
+float World::heightmap[WSIZE*WSIZE] = {0.0};    //Flat Array
+float World::discharge[WSIZE*WSIZE] = {0.0};    //Water Path Storage (Rivers)
+float World::momentumx[WSIZE*WSIZE] = {0.0};    //Momentum X Storage (Rivers)
+float World::momentumy[WSIZE*WSIZE] = {0.0};    //Momentum Y Storage (Rivers)
+
+float World::lrate = 0.1f;
+float World::dischargeThresh = 0.4f;
+float World::maxdiff = 0.01f;
+float World::settling = 0.8f;
+
+#include "vegetation.h"
+#include "water.h"
+
 /*
-===================================================
-          WORLD GENERATING FUNCTIONS
-===================================================
+================================================================================
+                        World Method Implementations
+================================================================================
 */
 
+inline bool World::oob(ivec2 pos){
+  if(pos.x >= dim.x) return true;
+  if(pos.y >= dim.y) return true;
+  if(pos.x < 0) return true;
+  if(pos.y < 0) return true;
+  return false;
+}
+
+inline float World::height(vec2 pos){
+  return heightmap[(int)pos.x * dim.y + (int)pos.y];
+}
+
+inline float World::getDischarge(vec2 pos){
+  return erf(dischargeThresh*discharge[(int)pos.x * dim.y + (int)pos.y]);
+}
+
+glm::vec3 World::normal(vec2 pos){
+
+  glm::vec3 n = glm::vec3(0);
+
+  //Two large triangels adjacent to the plane (+Y -> +X) (-Y -> -X)
+  n += glm::cross(glm::vec3( 0.0, SCALE*(height(pos+glm::vec2(0,1))-height(pos)), 1.0), glm::vec3( 1.0, SCALE*(height(pos+glm::vec2(1,0))-height(pos)), 0.0));
+  n += glm::cross(glm::vec3( 0.0, SCALE*(height(pos-glm::vec2(0,1))-height(pos)),-1.0), glm::vec3(-1.0, SCALE*(height(pos-glm::vec2(1,0))-height(pos)), 0.0));
+
+  //Two Alternative Planes (+X -> -Y) (-X -> +Y)
+  n += glm::cross(glm::vec3( 1.0, SCALE*(height(pos+glm::vec2(1,0))-height(pos)), 0.0), glm::vec3( 0.0, SCALE*(height(pos-glm::vec2(0,1))-height(pos)),-1.0));
+  n += glm::cross(glm::vec3(-1.0, SCALE*(height(pos-glm::vec2(1,0))-height(pos)), 0.0), glm::vec3( 0.0, SCALE*(height(pos+glm::vec2(0,1))-height(pos)), 1.0));
+
+  return glm::normalize(n);
+
+}
+
 void World::generate(){
+
   std::cout<<"Generating New World"<<std::endl;
   if(SEED == 0) SEED = time(NULL);
 
   std::cout<<"Seed: "<<SEED<<std::endl;
-  //Seed the Random Generator
-  srand(SEED);
 
   std::cout<<"... generating height ..."<<std::endl;
 
@@ -70,10 +122,12 @@ void World::generate(){
     if(heightmap[i] > max) max = heightmap[i];
     if(heightmap[i] < min) min = heightmap[i];
   }
+
   //Normalize
   for(int i = 0; i < dim.x*dim.y; i++){
-    heightmap[i] = (heightmap[i] - min)/(max - min);//+1.0f*((float)((i/dim.y)*(i/dim.y))/dim.x/dim.x)*((float)((i%dim.y)*(i%dim.y))/dim.y/dim.y);
+    heightmap[i] = (heightmap[i] - min)/(max - min);
   }
+
 }
 
 /*
@@ -85,6 +139,8 @@ void World::erode(int cycles){
 
   //Track the Movement of all Particles
   float track[dim.x*dim.y] = {0.0f};
+  float mx[dim.x*dim.y] = {0.0f};
+  float my[dim.x*dim.y] = {0.0f};
 
   //Do a series of iterations!
   for(int i = 0; i < cycles; i++){
@@ -93,78 +149,90 @@ void World::erode(int cycles){
     glm::vec2 newpos = glm::vec2(rand()%(int)dim.x, rand()%(int)dim.y);
     Drop drop(newpos);
 
-    while(true){
-
-      while(drop.descend(normal((int)drop.pos.x * dim.y + (int)drop.pos.y), heightmap, waterpath, waterpool, track, plantdensity, dim, SCALE));
-      if(!drop.flood(heightmap, waterpool, dim))
-        break;
-
-    }
+    while(drop.descend(track, mx, my, SCALE));
 
   }
 
-  //Update Path
-  float lrate = 0.01;
-  for(int i = 0; i < dim.x*dim.y; i++)
-    waterpath[i] = (1.0-lrate)*waterpath[i] + lrate*50.0f*track[i]/(1.0f + 50.0f*track[i]);
+  //Update Fields
+  for(int i = 0; i < dim.x*dim.y; i++){
+
+    discharge[i] = (1.0-lrate)*discharge[i] + lrate*track[i];
+    momentumx[i] = (1.0-lrate)*momentumx[i] + lrate*mx[i];
+    momentumy[i] = (1.0-lrate)*momentumy[i] + lrate*my[i];
+
+  }
 
 }
 
-bool World::grow(){
+void World::cascade(vec2 pos){
 
-  //Random Position
-  {
-    int i = rand()%(dim.x*dim.y);
-    glm::vec3 n = normal(i);
+  float* h = World::heightmap;
 
-    if( waterpool[i] == 0.0 &&
-        waterpath[i] < 0.2 &&
-        n.y > 0.8 ){
+  ivec2 ipos = pos;
+  int ind = ipos.x * dim.y + ipos.y;
 
-        Plant ntree(i, dim);
-        ntree.root(plantdensity, dim, 1.0);
-        trees.push_back(ntree);
-    }
+  static const ivec2 n[] = {
+    ivec2(-1, -1),
+    ivec2(-1,  0),
+    ivec2(-1,  1),
+    ivec2( 0, -1),
+    ivec2( 0,  1),
+    ivec2( 1, -1),
+    ivec2( 1,  0),
+    ivec2( 1,  1)
+  };
+
+  //No Out-Of-Bounds
+
+  struct Point {
+    ivec2 pos;
+    double h;
+  };
+
+  static Point sn[8];
+  int num = 0;
+  for(auto& nn: n){
+    ivec2 npos = ipos + nn;
+    if(World::oob(npos))
+      continue;
+    sn[num++] = { npos, h[npos.x * dim.y + npos.y] };
   }
 
-  //Loop over all Trees
-  for(int i = 0; i < trees.size(); i++){
+  sort(std::begin(sn), std::begin(sn) + num, [&](const Point& a, const Point& b){
+    return a.h < b.h;
+  });
 
-    //Grow the Tree
-    trees[i].grow();
+  //Iterate over all Neighbors
+  for (int i = 0; i < num; ++i) {
 
-    //Spawn a new Tree!
-    if(rand()%50 == 0){
-      //Find New Position
-      glm::vec2 npos = trees[i].pos + glm::vec2(rand()%9-4, rand()%9-4);
+    auto& npos = sn[i].pos;
 
-      //Check for Out-Of-Bounds
-      if( npos.x >= 0 && npos.x < dim.x &&
-          npos.y >= 0 && npos.y < dim.y ){
+    //Full Height-Different Between Positions!
+    int nind = npos.x * dim.y + npos.y;
+    float diff = (h[ind] - h[nind]);
+    if(diff == 0)   //No Height Difference
+      continue;
 
-        Plant ntree(npos, dim);
-        glm::vec3 n = normal(ntree.index);
+    //The Amount of Excess Difference!
+    float excess = abs(diff) - maxdiff;
+    if(excess <= 0)  //No Excess
+      continue;
 
-        if( waterpool[ntree.index] == 0.0 &&
-            waterpath[ntree.index] < 0.2 &&
-            n.y > 0.8 &&
-            (float)(rand()%1000)/1000.0 > plantdensity[ntree.index]){
-              ntree.root(plantdensity, dim, 1.0);
-              trees.push_back(ntree);
-            }
-      }
+    //Actual Amount Transferred
+    float transfer = settling * excess / 2.0f;
+
+    //Cap by Maximum Transferrable Amount
+    if(diff > 0){
+      h[ind] -= transfer;
+      h[nind] += transfer;
+    }
+    else{
+      h[ind] += transfer;
+      h[nind] -= transfer;
     }
 
-    //If the tree is in a pool or in a stream, kill it
-    if(waterpool[trees[i].index] > 0.0 ||
-       waterpath[trees[i].index] > 0.2 ||
-       rand()%1000 == 0 ){ //Random Death Chance
-         trees[i].root(plantdensity, dim, -1.0);
-         trees.erase(trees.begin()+i);
-         i--;
-       }
   }
 
-  return true;
+}
 
-};
+#endif

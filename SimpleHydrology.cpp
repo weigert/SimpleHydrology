@@ -3,7 +3,7 @@
 #include <TinyEngine/image>
 #include <noise/noise.h>
 
-#define WSIZE 256
+#define WSIZE 512
 #define FREQUENCY 1
 #define SCALE 80
 
@@ -14,10 +14,16 @@
 int main( int argc, char* args[] ) {
 
   //Initialize the World
+
   World world;
 
-  if(argc == 2)
-    world.SEED = std::stoi(args[1]);
+  if(argc == 2){
+    World::SEED = std::stoi(args[1]);
+  }
+  else {
+    World::SEED = time(NULL);
+  }
+  srand(World::SEED);
 
   world.generate();
 
@@ -65,14 +71,10 @@ int main( int argc, char* args[] ) {
   indexmap(vertexpool, world);
   updatemap(vertexpool, world);
 
-  cout<<"Ayy"<<endl;
-
   //Texture for Hydrology Map Visualization
   Texture map(image::make([&](int i){
-    double t1 = world.waterpath[i];
-    double t2 = world.waterpool[i];
+    double t1 = world.discharge[i];
     glm::vec4 color = glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(0.2, 0.5, 1.0, 1.0), t1);
-    if(t2 > 0.0) color = glm::mix(color, glm::vec4(0.15, 0.15, 0.45, 1.0), 1.0 - t2);
     return color;
   }, world.dim));
 
@@ -96,6 +98,8 @@ int main( int argc, char* args[] ) {
     if(!Tiny::event.press.empty() && Tiny::event.press.back() == SDLK_m)
       viewmap = !viewmap;
 
+    if(!Tiny::event.press.empty() && Tiny::event.press.back() == SDLK_n)
+      viewmomentum = !viewmomentum;
   };
 
   Tiny::view.interface = [](){};
@@ -109,7 +113,7 @@ int main( int argc, char* args[] ) {
     depth.uniform("dvp", dvp);
     vertexpool.render(GL_TRIANGLES);  //Render Surface Model
 
-    if(!world.trees.empty()){
+    if(!Vegetation::plants.empty()){
 
       //Render the Trees as a Particle System
       spritedepth.use();
@@ -134,7 +138,7 @@ int main( int argc, char* args[] ) {
     shader.uniform("lightStrength", lightStrength);
     vertexpool.render(GL_TRIANGLES);    //Render Model
 
-    if(!world.trees.empty()){
+    if(!Vegetation::plants.empty()){
 
       glm::mat4 orient = glm::rotate(glm::mat4(1.0f), glm::radians(180.0f-cam::rot), glm::vec3(0.0, 1.0, 0.0));
 
@@ -182,31 +186,42 @@ int main( int argc, char* args[] ) {
     if(paused)
       return;
 
-    world.erode(250*FREQUENCY*FREQUENCY); //Execute Erosion Cycles
-    world.grow();     //Grow Trees
+    world.erode(500*FREQUENCY*FREQUENCY); //Execute Erosion Cycles
+    Vegetation::grow();     //Grow Trees
 
     updatemap(vertexpool, world);
 
     //Update the Tree Particle System
     treemodels.clear();
-    for(auto& t: world.trees){
-      glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(t.pos.x, t.size + SCALE*world.heightmap[t.index], t.pos.y));
+    for(auto& t: Vegetation::plants){
+      glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(t.pos.x, t.size + SCALE*world.height(t.pos), t.pos.y));
       model = glm::scale(model, glm::vec3(t.size));
       treemodels.push_back(model);
     }
     modelbuf.fill(treemodels);
     treeparticle.SIZE = treemodels.size();    //  cout<<world.trees.size()<<endl;
 
-      //Redraw the Path and Death Image
-      if(viewmap){
-        map.raw(image::make([&](int i){
-          double t1 = world.waterpath[i];
-          double t2 = world.waterpool[i];
-          glm::vec4 color = glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(0.2, 0.5, 1.0, 1.0), t1);
-          if(t2 > 0.0) color = glm::mix(color, glm::vec4(0.15, 0.15, 0.45, 1.0), 1.0 - t2);
-          return color;
-        }, world.dim));
-      }
+    //Redraw the Discharge and Momentum Maps
+    if(viewmap){
+
+      if(viewmomentum)
+      map.raw(image::make([&](int i){
+        double t1 = World::getDischarge(vec2(i/World::dim.y, i%World::dim.y));
+        glm::vec4 color = glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(0.2, 0.5, 1.0, 1.0), t1);
+        return color;
+      }, world.dim));
+
+      else
+      map.raw(image::make([&](int i){
+
+        float mx = world.momentumx[i];
+        float my = world.momentumy[i];
+
+        glm::vec4 color = glm::vec4(abs(erf(mx)), 0, abs(erf(my)), 1.0);
+
+        return color;
+      }, world.dim));
+    }
 
   });
 
