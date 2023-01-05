@@ -15,7 +15,7 @@ class World {
 
 public:
 
-  static int SEED;
+  static unsigned int SEED;
   static glm::ivec2 dim;                      //Size of the Map
 
   // Storage Arrays
@@ -47,7 +47,7 @@ public:
 
 };
 
-int World::SEED = 1;
+unsigned int World::SEED = 1;
 glm::ivec2 World::dim = glm::vec2(WSIZE, WSIZE);
 
 float World::heightmap[WSIZE*WSIZE] = {0.0};    //Flat Array
@@ -104,8 +104,6 @@ glm::vec3 World::normal(vec2 pos){
 void World::generate(){
 
   std::cout<<"Generating New World"<<std::endl;
-  if(SEED == 0) SEED = time(NULL);
-
   std::cout<<"Seed: "<<SEED<<std::endl;
 
   std::cout<<"... generating height ..."<<std::endl;
