@@ -71,10 +71,7 @@ bool Drop::descend(float* track, float* mx, float* my, float scale){
   glm::ivec2 ipos = pos;
   int ind = ipos.x*dim.y+ipos.y;
 
-  // Effective Parameter Set
-
-  float effD = depositionRate*1.0-pd[ind];//max(0.0, );
-  if(effD < 0) effD = 0;
+  // Termination Checks
 
   if(age > maxAge){
     h[ind] += sediment;
@@ -85,6 +82,11 @@ bool Drop::descend(float* track, float* mx, float* my, float scale){
     h[ind] += sediment;
     return false;
   }
+
+  // Effective Parameter Set
+
+  float effD = depositionRate*1.0-pd[ind];//max(0.0, );
+  if(effD < 0) effD = 0;
 
   // Apply Forces to Particle
 
@@ -116,12 +118,10 @@ bool Drop::descend(float* track, float* mx, float* my, float scale){
 
   //Out-Of-Bounds
   float h2;
-  if(!glm::all(glm::greaterThanEqual(pos, glm::vec2(0))) ||
-     !glm::all(glm::lessThan((glm::ivec2)pos, dim))){
-       h2 = h[ind];//-0.002;
-   } else {
-     h2 = h[nind];
-   }
+  if(World::oob(pos))
+    h2 = h[ind]-0.003;
+  else
+    h2 = h[nind];
 
   //Mass-Transfer (in MASS)
   float c_eq = (1.0f+entrainment*World::getDischarge(ipos))*(h[ind]-h2);

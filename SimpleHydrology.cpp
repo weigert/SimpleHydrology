@@ -17,8 +17,13 @@ int main( int argc, char* args[] ) {
 
   World world;
 
-  if(argc == 2)
-    world.SEED = std::stoi(args[1]);
+  if(argc == 2){
+    World::SEED = std::stoi(args[1]);
+  }
+  else {
+    World::SEED = time(NULL);
+  }
+  srand(World::SEED);
 
   world.generate();
 

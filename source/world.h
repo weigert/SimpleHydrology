@@ -45,7 +45,7 @@ public:
 
 };
 
-int World::SEED = 0;
+int World::SEED = 1;
 glm::ivec2 World::dim = glm::vec2(WSIZE, WSIZE);
 
 float World::heightmap[WSIZE*WSIZE] = {0.0};    //Flat Array
@@ -54,9 +54,9 @@ float World::momentumx[WSIZE*WSIZE] = {0.0};    //Momentum X Storage (Rivers)
 float World::momentumy[WSIZE*WSIZE] = {0.0};    //Momentum Y Storage (Rivers)
 
 float World::lrate = 0.1f;
-float World::dischargeThresh = 0.5f;
+float World::dischargeThresh = 0.4f;
 float World::maxdiff = 0.01f;
-float World::settling = 0.5f;
+float World::settling = 0.8f;
 
 #include "vegetation.h"
 #include "water.h"
@@ -105,7 +105,6 @@ void World::generate(){
   if(SEED == 0) SEED = time(NULL);
 
   std::cout<<"Seed: "<<SEED<<std::endl;
-  srand(SEED);
 
   std::cout<<"... generating height ..."<<std::endl;
 
@@ -200,7 +199,7 @@ void World::cascade(vec2 pos){
   }
 
   sort(std::begin(sn), std::begin(sn) + num, [&](const Point& a, const Point& b){
-    return a.h > b.h;
+    return a.h < b.h;
   });
 
   //Iterate over all Neighbors
