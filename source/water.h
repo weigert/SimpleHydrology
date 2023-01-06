@@ -34,7 +34,7 @@ struct Drop {
 
   // Main Methods
 
-  bool descend(float* track, float* mx, float* my, float scale);
+  bool descend(float scale);
 
 };
 
@@ -55,7 +55,7 @@ float Drop::momentumTransfer = 1.0f;
 ================================================================================
 */
 
-bool Drop::descend(float* track, float* mx, float* my, float scale){
+bool Drop::descend(float scale){
 
   // Pointers to Relevant Storage Buffers, Parameters
 
@@ -105,9 +105,13 @@ bool Drop::descend(float* track, float* mx, float* my, float scale){
 
   // Update Discharge, Momentum Tracking Maps
 
-  track[ind] += volume;
-  mx[ind] += volume*speed.x;
-  my[ind] += volume*speed.y;
+  World::get(ipos).discharge_track += volume;
+  World::get(ipos).momentumx_track += volume*speed.x;
+  World::get(ipos).momentumy_track += volume*speed.y;
+
+//  track[ind] += volume;
+//  mx[ind] += volume*speed.x;
+//  my[ind] += volume*speed.y;
 
   //Out-Of-Bounds
   float h2;

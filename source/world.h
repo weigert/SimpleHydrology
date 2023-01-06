@@ -4,6 +4,8 @@
 #include "include/FastNoiseLite.h"
 #include "include/math.h"
 
+#include "cellpool.h"
+
 /*
 SimpleHydrology - world.h
 
@@ -11,93 +13,6 @@ Defines our main storage buffers,
 world updating functions for erosion
 and vegetation.
 */
-
-/*
-  New World Data-Storage Data Structure:
-
-  Either we do sort objects using an interleaved or a non-interleaved property buffer.
-  Interleaved is of course easier.
-
-  Then I have a set of map-sections, which index the pool.
-
-  A droplet then operates in a specific map-section, which later can contain a stride.
-  The world then simply represents the quadtree management interface for accessing
-  various areas of the map.
-
-  Once I can create a basic map, I need to render it.
-  Then the erosion should also work directly.
-
-  1. Mapcell contains base Structure
-  2. A cellpool lets me return a cell pool indexing struct,
-    which is the base element used by the quadtree
-    That's basically it.
-*/
-
-// Position Storage Buffer
-
-struct MapCell {
-
-  float height;
-  float discharge;
-  float momentumx;
-  float momentumy;
-
-};
-
-template<typename T>
-struct MapSection {
-
-  T* start;
-  size_t size;
-
-};
-
-template<typename T>
-struct CellPool {
-
-  T* start = NULL;
-  size_t size = 0;
-
-  deque<MapSection<T>> free;
-
-  CellPool(){}
-  CellPool(size_t _size){
-    reserve(_size);
-  }
-
-  ~CellPool(){
-    if(start != NULL)
-      delete[] start;
-  }
-
-  void reserve(size_t _size){
-    size = _size;
-    start = new T[size];
-    free.emplace_front(start, size);
-  }
-
-  MapSection<T> get(size_t _size){
-
-    if(free.empty())
-      return {NULL, 0};
-
-    if(_size > size)
-      return {NULL, 0};
-
-    if(free.front().size < _size)
-      return {NULL, 0};
-
-    return free.front();
-
-  }
-
-};
-
-CellPool<MapCell> pool;
-
-
-
-
 
 class World {
 
@@ -108,7 +23,7 @@ public:
 
   // Storage Arrays
 
-  static MapSection<MapCell> section;
+  static vector<MapIndex> indices;
 
   // Parameters
 
@@ -129,13 +44,14 @@ public:
   static void erode(int cycles);              // Erosion Update Step
   static void cascade(vec2 pos);              // Perform Sediment Cascade
 
+  static glm::vec2 randpos();
 
 };
 
 unsigned int World::SEED = 1;
 glm::ivec2 World::dim = glm::vec2(WSIZE, WSIZE);
 
-MapSection<MapCell> World::section;
+vector<MapIndex> World::indices;
 
 float World::lrate = 0.1f;
 float World::dischargeThresh = 0.4f;
@@ -151,16 +67,41 @@ float World::settling = 0.8f;
 ================================================================================
 */
 
-inline bool World::oob(ivec2 pos){
-  if(pos.x >= dim.x) return true;
-  if(pos.y >= dim.y) return true;
-  if(pos.x < 0) return true;
-  if(pos.y < 0) return true;
-  return false;
+inline glm::vec2 World::randpos(){
+
+  // Pick the Area to Spawn
+  int fullarea = 0;
+  for(auto& index: indices)
+    fullarea += index.dim.x*index.dim.y;
+
+  float randval = (float)(rand()%1000)/1000.0f;
+
+  float cumprob = 0;
+  for(auto& index: indices){
+    cumprob += (float)(index.dim.x*index.dim.y)/(float)fullarea;
+    if(randval <= cumprob)
+      return index.pos + glm::ivec2(rand()%index.dim.x, rand()%index.dim.y);
+  }
+
+}
+
+inline bool World::oob(ivec2 p){
+
+  for(auto& index: indices)
+  if(!index.oob(p))
+    return false;
+  return true;
+
 }
 
 inline MapCell& World::get(vec2 pos){
-  return *(section.start + math::flatten(pos, dim));
+
+  for(auto& index: indices)
+  if(!index.oob(pos))
+    return index.get(pos);
+
+  cout<<"FAILURE"<<endl;
+
 }
 
 inline float World::getDischarge(vec2 pos){
@@ -169,23 +110,26 @@ inline float World::getDischarge(vec2 pos){
 
 glm::vec3 World::normal(vec2 pos){
 
-  glm::vec3 n = glm::vec3(0);
+  glm::vec3 n = glm::vec3(0, 1, 0);
 
   //Two large triangels adjacent to the plane (+Y -> +X) (-Y -> -X)
-  if(!World::oob(pos+glm::vec2( 1, 1)))
+  if(!World::oob(pos + glm::vec2( 0, 1)) && !World::oob(pos + glm::vec2( 1, 0)))
     n += glm::cross(glm::vec3( 0.0, SCALE*(get(pos+glm::vec2(0,1)).height - get(pos).height), 1.0), glm::vec3( 1.0, SCALE*(get(pos+glm::vec2(1,0)).height - get(pos).height), 0.0));
 
-  if(!World::oob(pos+glm::vec2(-1,-1)))
+  if(!World::oob(pos + glm::vec2(-1, 0)) && !World::oob(pos + glm::vec2( 0,-1)))
     n += glm::cross(glm::vec3( 0.0, SCALE*(get(pos-glm::vec2(0,1)).height - get(pos).height),-1.0), glm::vec3(-1.0, SCALE*(get(pos-glm::vec2(1,0)).height - get(pos).height), 0.0));
 
   //Two Alternative Planes (+X -> -Y) (-X -> +Y)
-  if(!World::oob(pos+glm::vec2( 1,-1)))
+  if(!World::oob(pos + glm::vec2( 1, 0)) && !World::oob(pos + glm::vec2( 0,-1)))
     n += glm::cross(glm::vec3( 1.0, SCALE*(get(pos+glm::vec2(1,0)).height - get(pos).height), 0.0), glm::vec3( 0.0, SCALE*(get(pos-glm::vec2(0,1)).height - get(pos).height),-1.0));
 
-  if(!World::oob(pos+glm::vec2(-1, 1)))
+  if(!World::oob(pos + glm::vec2(-1, 0)) && !World::oob(pos + glm::vec2( 0, 1)))
     n += glm::cross(glm::vec3(-1.0, SCALE*(get(pos-glm::vec2(1,0)).height - get(pos).height), 0.0), glm::vec3( 0.0, SCALE*(get(pos+glm::vec2(0,1)).height - get(pos).height), 1.0));
 
-  return glm::normalize(n);
+  if(length(n) > 0)
+    n = glm::normalize(n);
+
+  return n;
 
 }
 
@@ -193,9 +137,6 @@ void World::generate(){
 
   std::cout<<"Generating New World"<<std::endl;
   std::cout<<"Seed: "<<SEED<<std::endl;
-
-  pool.reserve(WSIZE*WSIZE);
-  World::section = pool.get(WSIZE*WSIZE);
 
   std::cout<<"... generating height ..."<<std::endl;
 
@@ -213,17 +154,26 @@ void World::generate(){
   noise.SetFrequency(frequency);
 
   float min, max = 0.0;
-  for(int i = 0; i < dim.x; i++)
-  for(int j = 0; j < dim.y; j++){
-    World::get(ivec2(i, j)).height = noise.GetNoise((double)i/(double)dim.x, (double)j/(double)dim.y, (double)(SEED%10000));
-    if(World::get(ivec2(i, j)).height > max) max = World::get(ivec2(i, j)).height;
-    if(World::get(ivec2(i, j)).height < min) min = World::get(ivec2(i, j)).height;
+
+  for(auto& index: indices){
+
+      for(int i = index.pos.x; i < index.pos.x + index.dim.x; i++)
+      for(int j = index.pos.y; j < index.pos.y + index.dim.y; j++){
+        index.get(ivec2(i, j)).height = noise.GetNoise((double)i/(double)dim.x, (double)j/(double)dim.y, (double)(SEED%10000));
+        if(index.get(ivec2(i, j)).height > max) max = index.get(ivec2(i, j)).height;
+        if(index.get(ivec2(i, j)).height < min) min = index.get(ivec2(i, j)).height;
+      }
+
   }
 
   //Normalize
-  for(int i = 0; i < dim.x; i++)
-  for(int j = 0; j < dim.y; j++){
-    World::get(ivec2(i, j)).height = (World::get(ivec2(i, j)).height - min)/(max - min);
+  for(auto& index: indices){
+
+    for(int i = index.pos.x; i < index.pos.x + index.dim.x; i++)
+    for(int j = index.pos.y; j < index.pos.y + index.dim.y; j++){
+      index.get(ivec2(i, j)).height = (index.get(ivec2(i, j)).height - min)/(max - min);
+    }
+
   }
 
 }
@@ -235,30 +185,39 @@ void World::generate(){
 */
 void World::erode(int cycles){
 
-  //Track the Movement of all Particles
-  float track[dim.x*dim.y] = {0.0f};
-  float mx[dim.x*dim.y] = {0.0f};
-  float my[dim.x*dim.y] = {0.0f};
+  for(auto& index: indices){
+
+    for(int i = index.pos.x; i < index.pos.x + index.dim.x; i++)
+    for(int j = index.pos.y; j < index.pos.y + index.dim.y; j++){
+      index.get(ivec2(i, j)).discharge_track = 0;
+      index.get(ivec2(i, j)).momentumx_track = 0;
+      index.get(ivec2(i, j)).momentumy_track = 0;
+    }
+
+  }
 
   //Do a series of iterations!
   for(int i = 0; i < cycles; i++){
 
     //Spawn New Particle
-    glm::vec2 newpos = glm::vec2(rand()%(int)dim.x, rand()%(int)dim.y);
+    glm::vec2 newpos = World::randpos();
     Drop drop(newpos);
 
-    while(drop.descend(track, mx, my, SCALE));
+    while(drop.descend(SCALE));
 
   }
 
   //Update Fields
-  for(int i = 0; i < dim.x; i++)
-  for(int j = 0; j < dim.y; j++){
+  for(auto& index: indices){
 
-    World::get(ivec2(i, j)).discharge = (1.0-lrate)*World::get(ivec2(i, j)).discharge + lrate*track[math::flatten(ivec2(i, j), World::dim)];
-    World::get(ivec2(i, j)).momentumx = (1.0-lrate)*World::get(ivec2(i, j)).momentumx + lrate*mx[math::flatten(ivec2(i, j), World::dim)];
-    World::get(ivec2(i, j)).momentumy = (1.0-lrate)*World::get(ivec2(i, j)).momentumy + lrate*my[math::flatten(ivec2(i, j), World::dim)];
+    for(int i = index.pos.x; i < index.pos.x + index.dim.x; i++)
+    for(int j = index.pos.y; j < index.pos.y + index.dim.y; j++){
 
+      index.get(ivec2(i, j)).discharge = (1.0-lrate)*index.get(ivec2(i, j)).discharge + lrate*index.get(ivec2(i, j)).discharge_track;//track[math::flatten(ivec2(i, j), World::dim)];
+      index.get(ivec2(i, j)).momentumx = (1.0-lrate)*index.get(ivec2(i, j)).momentumx + lrate*index.get(ivec2(i, j)).momentumx_track;//mx[math::flatten(ivec2(i, j), World::dim)];
+      index.get(ivec2(i, j)).momentumy = (1.0-lrate)*index.get(ivec2(i, j)).momentumy + lrate*index.get(ivec2(i, j)).momentumy_track;//my[math::flatten(ivec2(i, j), World::dim)];
+
+    }
   }
 
 }

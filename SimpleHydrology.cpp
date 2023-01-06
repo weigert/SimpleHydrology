@@ -6,17 +6,69 @@
 #define FREQUENCY 1
 #define SCALE 80
 
+#include "source/model.h"
 #include "source/vertexpool.h"
 #include "source/world.h"
-#include "source/model.h"
+
+CellPool<MapCell> cellpool;
+Vertexpool<Vertex> vertexpool;
 
 int main( int argc, char* args[] ) {
 
+  Tiny::window("Simple Hydrology", WIDTH, HEIGHT);
+
   //Initialize the World
+
+  cellpool.reserve(4*WSIZE*WSIZE);
+  vertexpool.reserve(WSIZE*WSIZE, 4);
 
   World world;
 
-  std::cout<<argc<<std::endl;
+  world.indices.emplace_back(
+    ivec2(0),
+    World::dim,
+    cellpool.get(WSIZE*WSIZE),
+    vertexpool.section(WSIZE*WSIZE, 0, glm::vec3(0), vertexpool.indices.size())
+  );
+
+  indexmap(vertexpool, world.indices.back());
+
+  /*
+  world.indices.emplace_back(
+    ivec2(WSIZE, 0),
+    World::dim/2,
+    cellpool.get(WSIZE*WSIZE/4),
+    vertexpool.section(WSIZE*WSIZE/4, 0, glm::vec3(0), vertexpool.indices.size())
+  );
+  */
+
+  world.indices.emplace_back(
+    ivec2(WSIZE, 0),
+    World::dim,
+    cellpool.get(WSIZE*WSIZE),
+    vertexpool.section(WSIZE*WSIZE, 0, glm::vec3(0), vertexpool.indices.size())
+  );
+
+  indexmap(vertexpool, world.indices.back());
+
+  world.indices.emplace_back(
+    ivec2(0, WSIZE),
+    World::dim,
+    cellpool.get(WSIZE*WSIZE),
+    vertexpool.section(WSIZE*WSIZE, 0, glm::vec3(0), vertexpool.indices.size())
+  );
+
+  indexmap(vertexpool, world.indices.back());
+
+  world.indices.emplace_back(
+    ivec2(WSIZE, WSIZE),
+    World::dim,
+    cellpool.get(WSIZE*WSIZE),
+    vertexpool.section(WSIZE*WSIZE, 0, glm::vec3(0), vertexpool.indices.size())
+  );
+
+  indexmap(vertexpool, world.indices.back());
+
   if(argc >= 2){
     World::SEED = std::stoi(args[1]);
     srand(std::stoi(args[1]));
@@ -28,9 +80,25 @@ int main( int argc, char* args[] ) {
 
   world.generate();
 
+  //Vertexpool for Drawing Surface
+
+  for(auto& index: world.indices){
+    updatemap(vertexpool, index);
+  }
+
+
+
+
+
+
+
+
+
+
+
+
   //Initialize the Visualization
 
-  Tiny::window("Simple Hydrology", WIDTH, HEIGHT);
 
   glDisable(GL_CULL_FACE);
 
@@ -65,12 +133,6 @@ int main( int argc, char* args[] ) {
   Billboard image(WIDTH, HEIGHT);     //1200x800, color and depth
   Billboard shadow(8000, 8000);       //800x800, depth only
   Square2D flat;
-
-  //Vertexpool for Drawing Surface
-  Vertexpool<Vertex> vertexpool(WSIZE*WSIZE, 1);
-  section = vertexpool.section(WSIZE*WSIZE, 0, glm::vec3(0));
-  indexmap(vertexpool, world);
-  updatemap(vertexpool, world);
 
   //Texture for Hydrology Map Visualization
   Texture map(image::make([&](int i){
@@ -112,7 +174,7 @@ int main( int argc, char* args[] ) {
     shadow.target();                  //Prepare Target
     depth.use();                      //Prepare Shader
     depth.uniform("dvp", dvp);
-    vertexpool.render(GL_TRIANGLES);  //Render Surface Model
+    vertexpool.render(GL_TRIANGLES, 0, 4);  //Render Surface Model
 
     if(!Vegetation::plants.empty()){
 
@@ -137,7 +199,7 @@ int main( int argc, char* args[] ) {
     shader.uniform("lightPos", lightPos);
     shader.uniform("lookDir", cam::pos);
     shader.uniform("lightStrength", lightStrength);
-    vertexpool.render(GL_TRIANGLES);    //Render Model
+    vertexpool.render(GL_TRIANGLES, 0, 4);    //Render Model
 
     if(!Vegetation::plants.empty()){
 
@@ -187,10 +249,12 @@ int main( int argc, char* args[] ) {
     if(paused)
       return;
 
-    world.erode(500*FREQUENCY*FREQUENCY); //Execute Erosion Cycles
-    Vegetation::grow();     //Grow Trees
+    world.erode(2000*FREQUENCY*FREQUENCY); //Execute Erosion Cycles
+  //  Vegetation::grow();     //Grow Trees
 
-    updatemap(vertexpool, world);
+    for(auto& index: world.indices){
+      updatemap(vertexpool, index);
+    }
 
     //Update the Tree Particle System
     treemodels.clear();
