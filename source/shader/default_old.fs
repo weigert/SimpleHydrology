@@ -1,34 +1,27 @@
 #version 430 core
-
-layout(location = 0) in vec3 in_Position;
-layout(location = 1) in vec3 in_Normal;
-layout(location = 2) in vec4 in_Color;
-
-//Lighting
+//Lighting Settings
 uniform vec3 lightCol;
 uniform vec3 lightPos;
 uniform vec3 lookDir;
 uniform float lightStrength;
 
-//Uniforms
-uniform mat4 vp;
-uniform mat4 dbvp;
-
+//Sampler for the ShadowMap
 uniform sampler2D shadowMap;
 
-// We output the ex_Color variable to the next shader in the chain
-flat out vec4 ex_Color;
-out vec4 ex_Shadow;
+in vec4 ex_Color;
+in vec3 ex_Normal;
+in vec4 ex_Shadow;
 
+out vec4 fragColor;
 
-
+//Sample a grid..
 float gridSample(int size){
   //Stuff
   float shadow = 0.0;
   float currentDepth = ex_Shadow.z;
 
   //Compute Bias
-  float m = 1-dot(in_Normal, normalize(lightPos));
+  float m = 1-dot(ex_Normal, normalize(lightPos));
   float bias = mix(0.002, 0.2*m, pow(m, 5));
 
   for(int x = -size; x <= size; ++x){
@@ -54,16 +47,15 @@ float shade(){
 
 vec4 phong() {
 
-float diffuse = clamp(dot(in_Normal, normalize(lightPos)), 0.1, 0.9);
+float diffuse = clamp(dot(ex_Normal, normalize(lightPos)), 0.2, 0.8);
 float ambient = 0.3;
-float spec = 0.1*pow(max(dot(normalize(lookDir), normalize(reflect(lightPos, in_Normal))), 0.0), 32.0);
+float spec = 0.7*pow(max(dot(normalize(lookDir), normalize(reflect(lightPos, ex_Normal))), 0.0), 32.0);
 
 return vec4(lightCol*lightStrength*((1.0f-0.9*shade())*(diffuse + spec) + ambient ), 1.0f);
 
 }
 
+
 void main(void) {
-	ex_Shadow = dbvp * vec4(in_Position, 1.0f);
-	gl_Position = vp * vec4(in_Position, 1.0f);
-	ex_Color = vec4((phong()*in_Color).xyz, 1.0f);
+  fragColor = vec4((phong()*ex_Color).xyz, 1.0f);
 }

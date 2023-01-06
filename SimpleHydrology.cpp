@@ -63,7 +63,7 @@ int main( int argc, char* args[] ) {
 
   //Rendering Targets / Framebuffers
   Billboard image(WIDTH, HEIGHT);     //1200x800, color and depth
-  Billboard shadow(4000, 4000); //800x800, depth only
+  Billboard shadow(8000, 8000);       //800x800, depth only
   Square2D flat;
 
   //Vertexpool for Drawing Surface

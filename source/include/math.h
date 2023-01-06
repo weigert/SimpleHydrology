@@ -9,8 +9,8 @@ using namespace std;
 using namespace glm;
 
 inline int flatten(ivec2 p, ivec2 s){
-//  return p.x * s.y + p.y;
-  return libmorton::morton2D_32_encode(p.x, p.y);
+  return p.x * s.y + p.y;
+//  return libmorton::morton2D_32_encode(p.x, p.y);
 }
 
 }
