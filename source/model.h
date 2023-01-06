@@ -51,13 +51,13 @@ void indexmap(Vertexpool<Vertex>& vertexpool, World& world){
   for(int i = 0; i < WSIZE-1; i++){
   for(int j = 0; j < WSIZE-1; j++){
 
-    vertexpool.indices.push_back(i*world.dim.y+j);
-    vertexpool.indices.push_back(i*world.dim.y+(j+1));
-    vertexpool.indices.push_back((i+1)*world.dim.y+j);
+    vertexpool.indices.push_back(math::flatten(ivec2(i, j), World::dim));
+    vertexpool.indices.push_back(math::flatten(ivec2(i, j+1), World::dim));
+    vertexpool.indices.push_back(math::flatten(ivec2(i+1, j), World::dim));
 
-    vertexpool.indices.push_back((i+1)*world.dim.y+j);
-    vertexpool.indices.push_back(i*world.dim.y+(j+1));
-    vertexpool.indices.push_back((i+1)*world.dim.y+(j+1));
+    vertexpool.indices.push_back(math::flatten(ivec2(i+1, j), World::dim));
+    vertexpool.indices.push_back(math::flatten(ivec2(i, j+1), World::dim));
+    vertexpool.indices.push_back(math::flatten(ivec2(i+1, j+1), World::dim));
 
   }}
 
@@ -72,8 +72,7 @@ void updatemap(Vertexpool<Vertex>& vertexpool, World& world){
   for(int i = 0; i < WSIZE; i++)
   for(int j = 0; j < WSIZE; j++){
 
-    int ind = i*world.dim.y+j;
-    float height = SCALE*world.heightmap[ind];
+    float height = SCALE*world.height(ivec2(i, j));
 
     float p = World::getDischarge(vec2(i, j));
     glm::vec3 color = flatColor;
@@ -84,7 +83,7 @@ void updatemap(Vertexpool<Vertex>& vertexpool, World& world){
 
     color = glm::mix(color, waterColor, p);
 
-    vertexpool.fill(section, ind,
+    vertexpool.fill(section, math::flatten(ivec2(i, j), World::dim),
       glm::vec3(i, height, j),
       normal,
       vec4(color, 1.0f)

@@ -84,7 +84,7 @@ bool Plant::spawn( vec2 pos ){
 
 void Plant::root(float* density, glm::ivec2 dim, float f){
 
-  int ind = pos.x*dim.y + pos.y;
+  int ind = math::flatten(pos, dim);
 
   //Can always do this one
   density[ind]       += f*1.0;
@@ -125,8 +125,8 @@ bool Vegetation::grow(){
   //Random Position
   {
 
-    int x = rand()%(World::dim.x);//*World::dim.y);
-    int y = rand()%(World::dim.y);//*World::dim.y);
+    int x = rand()%(World::dim.x);
+    int y = rand()%(World::dim.y);
 
     if( Plant::spawn(vec2(x, y)) ){
 
@@ -163,7 +163,7 @@ bool Vegetation::grow(){
 
     //Find New Position
     glm::vec2 npos = plants[i].pos + glm::vec2(rand()%9-4, rand()%9-4);
-    int nind = (int)npos.x*World::dim.y + (int)npos.y;
+    int nind = math::flatten(npos, World::dim);
 
     //Check for Out-Of-Bounds
     if(World::oob(npos))

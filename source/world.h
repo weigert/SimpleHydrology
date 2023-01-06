@@ -2,6 +2,7 @@
 #define SIMPLEHYDROLOGY_WORLD
 
 #include "include/FastNoiseLite.h"
+#include "include/math.h"
 
 /*
 SimpleHydrology - world.h
@@ -37,7 +38,7 @@ public:
   static void generate();                     // Initialize Heightmap
   static bool oob(ivec2 pos);                 // Check Out-Of-Bounds
 
-  static float height(vec2 pos);              // Get Surface Height
+  static float& height(vec2 pos);             // Get Surface Height (Reference)
   static float getDischarge(vec2 pos);
 
   static glm::vec3 normal(vec2 pos);          // Compute Surface Normal
@@ -77,12 +78,12 @@ inline bool World::oob(ivec2 pos){
   return false;
 }
 
-inline float World::height(vec2 pos){
-  return heightmap[(int)pos.x * dim.y + (int)pos.y];
+inline float& World::height(vec2 pos){
+  return heightmap[math::flatten(pos, dim)];
 }
 
 inline float World::getDischarge(vec2 pos){
-  return erf(dischargeThresh*discharge[(int)pos.x * dim.y + (int)pos.y]);
+  return erf(dischargeThresh*discharge[math::flatten(pos, dim)]);
 }
 
 glm::vec3 World::normal(vec2 pos){
@@ -171,10 +172,7 @@ void World::erode(int cycles){
 
 void World::cascade(vec2 pos){
 
-  float* h = World::heightmap;
-
-  ivec2 ipos = pos;
-  int ind = ipos.x * dim.y + ipos.y;
+  // Get Non-Out-of-Bounds Neighbors
 
   static const ivec2 n[] = {
     ivec2(-1, -1),
@@ -187,34 +185,39 @@ void World::cascade(vec2 pos){
     ivec2( 1,  1)
   };
 
-  //No Out-Of-Bounds
-
   struct Point {
     ivec2 pos;
-    double h;
+    float h;
   };
 
   static Point sn[8];
   int num = 0;
+
+  ivec2 ipos = pos;
+
   for(auto& nn: n){
+
     ivec2 npos = ipos + nn;
+
     if(World::oob(npos))
       continue;
-    sn[num++] = { npos, h[npos.x * dim.y + npos.y] };
+
+    sn[num++] = { npos, World::height(npos) };
+
   }
+
+  //Iterate over all sorted Neighbors
 
   sort(std::begin(sn), std::begin(sn) + num, [&](const Point& a, const Point& b){
     return a.h < b.h;
   });
 
-  //Iterate over all Neighbors
   for (int i = 0; i < num; ++i) {
 
     auto& npos = sn[i].pos;
 
     //Full Height-Different Between Positions!
-    int nind = npos.x * dim.y + npos.y;
-    float diff = (h[ind] - h[nind]);
+    float diff = (World::height(ipos) - World::height(npos));
     if(diff == 0)   //No Height Difference
       continue;
 
@@ -228,12 +231,12 @@ void World::cascade(vec2 pos){
 
     //Cap by Maximum Transferrable Amount
     if(diff > 0){
-      h[ind] -= transfer;
-      h[nind] += transfer;
+      World::height(ipos) -= transfer;
+      World::height(npos) += transfer;
     }
     else{
-      h[ind] += transfer;
-      h[nind] -= transfer;
+      World::height(ipos) += transfer;
+      World::height(npos) -= transfer;
     }
 
   }

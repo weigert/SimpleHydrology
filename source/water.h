@@ -69,17 +69,17 @@ bool Drop::descend(float* track, float* mx, float* my, float scale){
   //Initial Position
 
   glm::ivec2 ipos = pos;
-  int ind = ipos.x*dim.y+ipos.y;
+  int ind = math::flatten(ipos, dim);
 
   // Termination Checks
 
   if(age > maxAge){
-    h[ind] += sediment;
+    World::height(ipos) += sediment;
     return false;
   }
 
   if(volume < minVol){
-    h[ind] += sediment;
+    World::height(ipos) += sediment;
     return false;
   }
 
@@ -113,23 +113,20 @@ bool Drop::descend(float* track, float* mx, float* my, float scale){
   mx[ind] += volume*speed.x;
   my[ind] += volume*speed.y;
 
-  //New Position
-  int nind = (int)pos.x*dim.y+(int)pos.y;
-
   //Out-Of-Bounds
   float h2;
   if(World::oob(pos))
-    h2 = h[ind]-0.003;
+    h2 = World::height(ipos)-0.003;
   else
-    h2 = h[nind];
+    h2 = World::height(pos);
 
   //Mass-Transfer (in MASS)
-  float c_eq = (1.0f+entrainment*World::getDischarge(ipos))*(h[ind]-h2);
-  if(c_eq < 0) c_eq = 0;//max(0.0, (h[ind]-h[nind]));
+  float c_eq = (1.0f+entrainment*World::getDischarge(ipos))*(World::height(ipos)-h2);
+  if(c_eq < 0) c_eq = 0;
   float cdiff = c_eq - sediment;
 
   sediment += effD*cdiff;
-  h[ind] -= effD*cdiff;
+  World::height(ipos) -= effD*cdiff;
 
   //Evaporate (Mass Conservative)
   sediment /= (1.0-evapRate);
