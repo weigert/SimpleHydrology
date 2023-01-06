@@ -74,7 +74,7 @@ int main( int argc, char* args[] ) {
 
   //Texture for Hydrology Map Visualization
   Texture map(image::make([&](int i){
-    double t1 = world.discharge[i];
+    double t1 = 0.0f;
     glm::vec4 color = glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(0.2, 0.5, 1.0, 1.0), t1);
     return color;
   }, world.dim));
@@ -195,7 +195,7 @@ int main( int argc, char* args[] ) {
     //Update the Tree Particle System
     treemodels.clear();
     for(auto& t: Vegetation::plants){
-      glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(t.pos.x, t.size + SCALE*world.height(t.pos), t.pos.y));
+      glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(t.pos.x, t.size + SCALE*world.get(t.pos).height, t.pos.y));
       model = glm::scale(model, glm::vec3(t.size));
       treemodels.push_back(model);
     }
@@ -215,8 +215,8 @@ int main( int argc, char* args[] ) {
       else
       map.raw(image::make([&](int i){
 
-        float mx = world.momentumx[i];
-        float my = world.momentumy[i];
+        float mx = world.get(math::unflatten(i, World::dim)).momentumx;
+        float my = world.get(math::unflatten(i, World::dim)).momentumy;
 
         glm::vec4 color = glm::vec4(abs(erf(mx)), 0, abs(erf(my)), 1.0);
 

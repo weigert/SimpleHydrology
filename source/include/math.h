@@ -13,6 +13,13 @@ inline int flatten(ivec2 p, ivec2 s){
 //  return libmorton::morton2D_32_encode(p.x, p.y);
 }
 
+inline ivec2 unflatten(int index, ivec2 s){
+  int y = ( index / 1   ) % s.x;
+  int x = ( index / s.x ) % s.y;
+  return ivec2(x, y);
+  //  return libmorton::morton2D_32_encode(p.x, p.y);
+}
+
 }
 
 

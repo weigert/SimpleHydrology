@@ -62,10 +62,6 @@ bool Drop::descend(float* track, float* mx, float* my, float scale){
   glm::ivec2 dim = World::dim;
   glm::vec3 n = World::normal(pos);
 
-  static float* h = World::heightmap;
-  static float* p = World::discharge;
-  static float* pd = Vegetation::density;
-
   //Initial Position
 
   glm::ivec2 ipos = pos;
@@ -74,18 +70,18 @@ bool Drop::descend(float* track, float* mx, float* my, float scale){
   // Termination Checks
 
   if(age > maxAge){
-    World::height(ipos) += sediment;
+    World::get(ipos).height += sediment;
     return false;
   }
 
   if(volume < minVol){
-    World::height(ipos) += sediment;
+    World::get(ipos).height += sediment;
     return false;
   }
 
   // Effective Parameter Set
 
-  float effD = depositionRate*1.0-pd[ind];//max(0.0, );
+  float effD = depositionRate;//*1.0-pd[ind];//max(0.0, );
   if(effD < 0) effD = 0;
 
   // Apply Forces to Particle
@@ -96,9 +92,9 @@ bool Drop::descend(float* track, float* mx, float* my, float scale){
 
   // Momentum Transfer Force
 
-  vec2 fspeed = vec2(World::momentumx[ind], World::momentumy[ind]);
+  vec2 fspeed = vec2(World::get(ipos).momentumx, World::get(ipos).momentumy);
   if(length(fspeed) > 0 && length(speed) > 0)
-    speed += momentumTransfer*dot(normalize(fspeed), normalize(speed))/(volume + p[ind])*fspeed;
+    speed += momentumTransfer*dot(normalize(fspeed), normalize(speed))/(volume + World::get(ipos).discharge)*fspeed;
 
   // Dynamic Time-Step, Update
 
@@ -116,17 +112,17 @@ bool Drop::descend(float* track, float* mx, float* my, float scale){
   //Out-Of-Bounds
   float h2;
   if(World::oob(pos))
-    h2 = World::height(ipos)-0.003;
+    h2 = World::get(ipos).height-0.003;
   else
-    h2 = World::height(pos);
+    h2 = World::get(pos).height;
 
   //Mass-Transfer (in MASS)
-  float c_eq = (1.0f+entrainment*World::getDischarge(ipos))*(World::height(ipos)-h2);
+  float c_eq = (1.0f+entrainment*World::getDischarge(ipos))*(World::get(ipos).height-h2);
   if(c_eq < 0) c_eq = 0;
   float cdiff = c_eq - sediment;
 
   sediment += effD*cdiff;
-  World::height(ipos) -= effD*cdiff;
+  World::get(ipos).height -= effD*cdiff;
 
   //Evaporate (Mass Conservative)
   sediment /= (1.0-evapRate);

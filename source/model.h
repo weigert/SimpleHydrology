@@ -78,7 +78,7 @@ void updatemap(Vertexpool<Vertex>& vertexpool, World& world){
   for(int i = 0; i < WSIZE; i++)
   for(int j = 0; j < WSIZE; j++){
 
-    float height = SCALE*world.height(ivec2(i, j));
+    float height = SCALE*world.get(ivec2(i, j)).height;
 
     float p = World::getDischarge(vec2(i, j));
     glm::vec3 color = flatColor;
