@@ -91,12 +91,18 @@ glm::vec3 World::normal(vec2 pos){
   glm::vec3 n = glm::vec3(0);
 
   //Two large triangels adjacent to the plane (+Y -> +X) (-Y -> -X)
-  n += glm::cross(glm::vec3( 0.0, SCALE*(height(pos+glm::vec2(0,1))-height(pos)), 1.0), glm::vec3( 1.0, SCALE*(height(pos+glm::vec2(1,0))-height(pos)), 0.0));
-  n += glm::cross(glm::vec3( 0.0, SCALE*(height(pos-glm::vec2(0,1))-height(pos)),-1.0), glm::vec3(-1.0, SCALE*(height(pos-glm::vec2(1,0))-height(pos)), 0.0));
+  if(!World::oob(pos+glm::vec2( 1, 1)))
+    n += glm::cross(glm::vec3( 0.0, SCALE*(height(pos+glm::vec2(0,1))-height(pos)), 1.0), glm::vec3( 1.0, SCALE*(height(pos+glm::vec2(1,0))-height(pos)), 0.0));
+
+  if(!World::oob(pos+glm::vec2(-1,-1)))
+    n += glm::cross(glm::vec3( 0.0, SCALE*(height(pos-glm::vec2(0,1))-height(pos)),-1.0), glm::vec3(-1.0, SCALE*(height(pos-glm::vec2(1,0))-height(pos)), 0.0));
 
   //Two Alternative Planes (+X -> -Y) (-X -> +Y)
-  n += glm::cross(glm::vec3( 1.0, SCALE*(height(pos+glm::vec2(1,0))-height(pos)), 0.0), glm::vec3( 0.0, SCALE*(height(pos-glm::vec2(0,1))-height(pos)),-1.0));
-  n += glm::cross(glm::vec3(-1.0, SCALE*(height(pos-glm::vec2(1,0))-height(pos)), 0.0), glm::vec3( 0.0, SCALE*(height(pos+glm::vec2(0,1))-height(pos)), 1.0));
+  if(!World::oob(pos+glm::vec2( 1,-1)))
+    n += glm::cross(glm::vec3( 1.0, SCALE*(height(pos+glm::vec2(1,0))-height(pos)), 0.0), glm::vec3( 0.0, SCALE*(height(pos-glm::vec2(0,1))-height(pos)),-1.0));
+
+  if(!World::oob(pos+glm::vec2(-1, 1)))
+    n += glm::cross(glm::vec3(-1.0, SCALE*(height(pos-glm::vec2(1,0))-height(pos)), 0.0), glm::vec3( 0.0, SCALE*(height(pos+glm::vec2(0,1))-height(pos)), 1.0));
 
   return glm::normalize(n);
 
@@ -123,15 +129,17 @@ void World::generate(){
   noise.SetFrequency(frequency);
 
   float min, max = 0.0;
-  for(int i = 0; i < dim.x*dim.y; i++){
-    heightmap[i] = noise.GetNoise((i/dim.y)*(1.0/dim.x), (i%dim.y)*(1.0/dim.y), (double)(SEED%10000));
-    if(heightmap[i] > max) max = heightmap[i];
-    if(heightmap[i] < min) min = heightmap[i];
+  for(int i = 0; i < dim.x; i++)
+  for(int j = 0; j < dim.y; j++){
+    World::height(ivec2(i, j)) = noise.GetNoise((double)i/(double)dim.x, (double)j/(double)dim.y, (double)(SEED%10000));
+    if(World::height(ivec2(i, j)) > max) max = World::height(ivec2(i, j));
+    if(World::height(ivec2(i, j)) < min) min = World::height(ivec2(i, j));
   }
 
   //Normalize
-  for(int i = 0; i < dim.x*dim.y; i++){
-    heightmap[i] = (heightmap[i] - min)/(max - min);
+  for(int i = 0; i < dim.x; i++)
+  for(int j = 0; j < dim.y; j++){
+    World::height(ivec2(i, j)) = (World::height(ivec2(i, j)) - min)/(max - min);
   }
 
 }
