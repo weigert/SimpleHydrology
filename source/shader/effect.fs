@@ -14,6 +14,7 @@ void main(){
 
     fragColor = texture(imageTexture, ex_Tex);
 
+    /*
     int foundedge = 0;
     vec4 a0 = textureOffset(heightTexture, ex_Tex, ivec2( 0, 0));
 
@@ -29,6 +30,7 @@ void main(){
 
     if(foundedge > 0)
       fragColor = vec4(0,0,0,1);
+      */
 
     float depthVal = 1.0f-clamp(texture(depthTexture, ex_Tex).r, 0.0, 1.0);
 

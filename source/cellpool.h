@@ -112,8 +112,9 @@ struct index {
   ivec2 pos = ivec2(0); // Absolute World Position
   ivec2 res = ivec2(0); // Absolute Resolution
 
-  slice<T> s;           // Raw Interleaved Data Slice
   uint* vertex = NULL;  // Vertexpool Rendering Pointer
+  slice<T> s;           // Raw Interleaved Data Slice
+  slice<T> s2;           // Raw Interleaved Data Slice
 
   inline T* get(const ivec2 p){
     return s.get(p - pos);
@@ -188,9 +189,15 @@ struct cell {
     Reduction Functions!
 */
 
-template<typename T>
-inline float height(T& t, vec2 p){
-  return t.get(p)->height;
+inline float height(quadmap::index<cell>& t, vec2 p){
+  return t.s.get(p-vec2(t.pos))->height + t.s2.get((p-vec2(t.pos))/2.0f)->height;
+}
+
+inline float height(quadmap::map<cell>& t, vec2 p){
+  for(auto& index: t.indices)
+  if(!index.oob(p))
+    return height(index, p);
+  return 0.0f;
 }
 
 template<typename T>

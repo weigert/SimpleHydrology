@@ -83,11 +83,19 @@ void World::generate(){
 
   for(auto& index: map.indices){
 
-      for(int i = index.pos.x; i < index.pos.x + index.res.x; i++)
-      for(int j = index.pos.y; j < index.pos.y + index.res.y; j++){
-        index.get(ivec2(i, j))->height = noise.GetNoise((double)i/(double)dim.x, (double)j/(double)dim.y, (double)(SEED%10000));
-        if(index.get(ivec2(i, j))->height > max) max = index.get(ivec2(i, j))->height;
-        if(index.get(ivec2(i, j))->height < min) min = index.get(ivec2(i, j))->height;
+      // Highest Res
+      for(int i = 0; i < index.s.res.x; i++)
+      for(int j = 0; j < index.s.res.y; j++){
+        vec2 p = (vec2(index.pos) + vec2(i, j))/vec2(dim);
+        index.s.get(ivec2(i, j))->height = noise.GetNoise(p.x, p.y, (float)(SEED%10000));
+        if(index.s.get(ivec2(i, j))->height > max) max = index.s.get(ivec2(i, j))->height;
+        if(index.s.get(ivec2(i, j))->height < min) min = index.s.get(ivec2(i, j))->height;
+      }
+
+      // Lowest Res
+      for(int i = 0; i < index.s2.res.x; i++)
+      for(int j = 0; j < index.s2.res.y; j++){
+        index.s2.get(ivec2(i, j))->height = (float)i/(float)index.s2.res.x;//0.0f;
       }
 
   }
@@ -95,9 +103,9 @@ void World::generate(){
   //Normalize
   for(auto& index: map.indices){
 
-    for(int i = index.pos.x; i < index.pos.x + index.res.x; i++)
-    for(int j = index.pos.y; j < index.pos.y + index.res.y; j++){
-      index.get(ivec2(i, j))->height = (index.get(ivec2(i, j))->height - min)/(max - min);
+    for(int i = 0; i < index.s.res.x; i++)
+    for(int j = 0; j < index.s.res.y; j++){
+      index.s.get(ivec2(i, j))->height = (index.s.get(ivec2(i, j))->height - min)/(max - min);
     }
 
   }
@@ -182,7 +190,7 @@ void World::cascade(vec2 pos){
     if(World::map.oob(npos))
       continue;
 
-    sn[num++] = { npos, World::map.get(npos)->height };
+    sn[num++] = { npos, reduce::height(World::map, npos) };
 
   }
 
@@ -197,7 +205,7 @@ void World::cascade(vec2 pos){
     auto& npos = sn[i].pos;
 
     //Full Height-Different Between Positions!
-    float diff = (World::map.get(ipos)->height - World::map.get(npos)->height);
+    float diff = (height(World::map, ipos) - height(World::map, npos));
     if(diff == 0)   //No Height Difference
       continue;
 

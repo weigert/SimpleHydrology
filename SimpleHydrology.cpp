@@ -31,18 +31,33 @@ int main( int argc, char* args[] ) {
   for(int i = 0; i < 1; i++)
   for(int j = 0; j < 1; j++){
 
-    quadmap::slice<reduce::cell> s = {
-      cellpool.get(WSIZE*WSIZE), ivec2(WSIZE, WSIZE)
-    };
-
     world.map.indices.emplace_back(
       ivec2(i*WSIZE, j*WSIZE),
       World::dim,
-      s,
       vertexpool.section(WSIZE*WSIZE, 0, glm::vec3(0), vertexpool.indices.size())
     );
+
+    world.map.indices.back().s = {
+      cellpool.get(WSIZE*WSIZE), ivec2(WSIZE, WSIZE)
+    };
+
+    world.map.indices.back().s2 = {
+      cellpool.get(WSIZE*WSIZE/4), ivec2(WSIZE/2, WSIZE/2)
+    };
+
     indexmap(vertexpool, world.map.indices.back());
+
   }
+
+
+
+
+
+
+
+
+
+
 
 
 
