@@ -260,7 +260,7 @@ int main( int argc, char* args[] ) {
 
       if(viewmomentum)
       map.raw(image::make([&](int i){
-        double t1 = World::getDischarge(vec2(i/World::dim.y, i%World::dim.y));
+        double t1 = reduce::discharge(World::map, vec2(i/World::dim.y, i%World::dim.y));
         glm::vec4 color = glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(0.2, 0.5, 1.0, 1.0), t1);
         return color;
       }, world.dim));

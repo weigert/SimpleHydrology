@@ -121,7 +121,7 @@ bool Drop::descend(float scale){
     h2 = World::map.get(pos)->height;
 
   //Mass-Transfer (in MASS)
-  float c_eq = (1.0f+entrainment*World::getDischarge(ipos))*(World::map.get(ipos)->height-h2);
+  float c_eq = (1.0f+entrainment*reduce::discharge(World::map, ipos))*(World::map.get(ipos)->height-h2);
   if(c_eq < 0) c_eq = 0;
   float cdiff = c_eq - sediment;
 

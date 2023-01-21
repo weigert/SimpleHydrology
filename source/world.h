@@ -36,8 +36,6 @@ public:
 
   static void generate();                     // Initialize Heightmap
 
-  static float getDischarge(vec2 pos);
-
   static void erode(int cycles);              // Erosion Update Step
   static void cascade(vec2 pos);              // Perform Sediment Cascade
 
@@ -49,7 +47,6 @@ glm::ivec2 World::dim = glm::vec2(WSIZE, WSIZE);
 quadmap::map<reduce::cell> World::map;
 
 float World::lrate = 0.1f;
-float World::dischargeThresh = 0.4f;
 float World::maxdiff = 0.01f;
 float World::settling = 0.8f;
 
@@ -61,10 +58,6 @@ float World::settling = 0.8f;
                         World Method Implementations
 ================================================================================
 */
-
-inline float World::getDischarge(vec2 pos){
-  return erf(dischargeThresh*World::map.get(pos)->discharge);
-}
 
 void World::generate(){
 

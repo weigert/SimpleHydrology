@@ -194,6 +194,11 @@ inline float height(T& t, vec2 p){
 }
 
 template<typename T>
+inline float discharge(T& t, vec2 p){
+  return erf(0.4f*t.get(p)->discharge);
+}
+
+template<typename T>
 vec3 normal(T& t, vec2 p){
 
   vec3 n = vec3(0, 0, 0);
