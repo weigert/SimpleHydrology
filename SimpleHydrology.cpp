@@ -2,12 +2,6 @@
 #include <TinyEngine/camera>
 #include <TinyEngine/image>
 
-#define WSIZE 512
-#define FREQUENCY 1
-#define SCALE 80
-#define RES 16
-#define TILES 4
-
 #include "source/model.h"
 #include "source/vertexpool.h"
 #include "source/world.h"
@@ -23,38 +17,12 @@ int main( int argc, char* args[] ) {
 
   //Initialize the World
 
-  cellpool.reserve(TILES*TILES*WSIZE*WSIZE);
-  vertexpool.reserve(WSIZE*WSIZE, TILES*TILES);
-
   World world;
 
-  for(int i = 0; i < TILES; i++)
-  for(int j = 0; j < TILES; j++){
+  cellpool.reserve(quad::area);
+  vertexpool.reserve(quad::tilearea, quad::maparea);
 
-    world.map.add({
-      ivec2(i*WSIZE, j*WSIZE),
-      ivec2(WSIZE, WSIZE),
-      vertexpool.section(WSIZE/RES*WSIZE/RES, 0, glm::vec3(0), vertexpool.indices.size())
-    });
-
-    world.map.nodes.back().s = {
-      cellpool.get(WSIZE/RES*WSIZE/RES), ivec2(WSIZE, WSIZE)/RES, RES
-    };
-
-    indexnode<RES>(vertexpool, world.map.nodes.back());
-
-  }
-
-
-
-
-
-
-
-
-
-
-
+  World::map.init(vertexpool, cellpool);
 
   if(argc >= 2){
     World::SEED = std::stoi(args[1]);
@@ -70,7 +38,7 @@ int main( int argc, char* args[] ) {
   //Vertexpool for Drawing Surface
 
   for(auto& node: world.map.nodes){
-    updatenode<RES>(vertexpool, node);
+    updatenode<quad::levelsize>(vertexpool, node);
   }
 
 
@@ -91,7 +59,7 @@ int main( int argc, char* args[] ) {
   cam::near = -800.0f;
   cam::far = 800.0f;
   cam::moverate = 10.0f;
-  cam::look = glm::vec3(WSIZE/2, 0, WSIZE/2);
+  cam::look = glm::vec3(quad::tilesize/2, 0, quad::tilesize/2);
   cam::roty = 45.0f;
   cam::init(3, cam::ORTHO);
   cam::update();
@@ -127,7 +95,7 @@ int main( int argc, char* args[] ) {
     double t1 = 0.0f;
     glm::vec4 color = glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(0.2, 0.5, 1.0, 1.0), t1);
     return color;
-  }, ivec2(WSIZE, WSIZE)));
+  }, quad::tileres));
 
   glm::mat4 mapmodel = glm::mat4(1.0f);
 
@@ -244,11 +212,11 @@ int main( int argc, char* args[] ) {
     if(paused)
       return;
 
-    world.erode(500*FREQUENCY*FREQUENCY); //Execute Erosion Cycles
+    world.erode(500); //Execute Erosion Cycles
   //  Vegetation::grow();     //Grow Trees
 
     for(auto& node: world.map.nodes){
-      updatenode<RES>(vertexpool, node);
+      updatenode<quad::levelsize>(vertexpool, node);
     }
 
     cout<<n++<<endl;
@@ -256,7 +224,7 @@ int main( int argc, char* args[] ) {
     //Update the Tree Particle System
     treemodels.clear();
     for(auto& t: Vegetation::plants){
-      glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(t.pos.x, t.size + SCALE*world.map.get(t.pos)->get(t.pos)->height, t.pos.y));
+      glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(t.pos.x, t.size + quad::mapscale*world.map.get(t.pos)->get(t.pos)->height, t.pos.y));
       model = glm::scale(model, glm::vec3(t.size));
       treemodels.push_back(model);
     }
@@ -268,16 +236,16 @@ int main( int argc, char* args[] ) {
 
       if(viewmomentum)
       map.raw(image::make([&](int i){
-        double t1 = World::map.discharge(vec2(i/WSIZE, i%WSIZE));
+        double t1 = World::map.discharge(vec2(i/quad::tilesize, i%quad::tilesize));
         glm::vec4 color = glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(0.2, 0.5, 1.0, 1.0), t1);
         return color;
-      }, ivec2(WSIZE, WSIZE)));
+      }, quad::tileres));
 
       else
       map.raw(image::make([&](int i){
 
-        auto node = world.map.get(math::unflatten(i, ivec2(WSIZE, WSIZE)));
-        auto cell = node->get(math::unflatten(i, ivec2(WSIZE, WSIZE)));
+        auto node = world.map.get(math::unflatten(i, quad::tileres));
+        auto cell = node->get(math::unflatten(i, quad::tileres));
 
         float mx = cell->momentumx;
         float my = cell->momentumy;
@@ -285,7 +253,7 @@ int main( int argc, char* args[] ) {
         glm::vec4 color = glm::vec4(abs(erf(mx)), 0, abs(erf(my)), 1.0);
 
         return color;
-      }, ivec2(WSIZE, WSIZE)));
+      }, quad::tileres));
     }
 
   });

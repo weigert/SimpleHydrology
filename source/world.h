@@ -116,11 +116,11 @@ void World::erode(int cycles){
     glm::vec2 newpos = node.pos + ivec2(rand()%node.res.x, rand()%node.res.y);
     Drop drop(newpos);
 
-    while(drop.descend(SCALE));
+    while(drop.descend());
 
   }
 
-  float l = lrate;///RES/RES;
+  float l = lrate;///quad::levelsize/quad::levelsize;
 
   //Update Fields
   for(auto& node: map.nodes){
@@ -164,7 +164,7 @@ void World::cascade(vec2 pos){
 
   for(auto& nn: n){
 
-    ivec2 npos = ipos + RES*nn;
+    ivec2 npos = ipos + quad::levelsize*nn;
 
     if(World::map.oob(npos))
       continue;
@@ -189,7 +189,7 @@ void World::cascade(vec2 pos){
       continue;
 
     //The Amount of Excess Difference!
-    float excess = abs(diff) - RES*maxdiff;
+    float excess = abs(diff) - quad::levelsize*maxdiff;
     if(excess <= 0)  //No Excess
       continue;
 

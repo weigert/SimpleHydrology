@@ -44,13 +44,13 @@ float Plant::maxDischarge = 0.2f;
 struct Vegetation {
 
   static std::vector<Plant> plants;
-  static float density[WSIZE*WSIZE];     //Density for Plants
+  static float density[quad::tilearea];     //Density for Plants
   static bool grow();
 
 };
 
 std::vector<Plant> Vegetation::plants;
-float Vegetation::density[WSIZE*WSIZE]{0.0f};
+float Vegetation::density[quad::tilearea]{0.0f};
 
 /*
 ================================================================================
@@ -91,30 +91,30 @@ void Plant::root(float* density, glm::ivec2 dim, float f){
 
   if(pos.x > 0){
     //
-    density[ind - WSIZE] += f*0.6;      //(-1, 0)
+    density[ind - quad::tilesize] += f*0.6;      //(-1, 0)
 
     if(pos.y > 0)
-      density[ind - WSIZE-1] += f*0.4;    //(-1, -1)
+      density[ind - quad::tilesize-1] += f*0.4;    //(-1, -1)
 
-    if(pos.y < WSIZE-1)
-      density[ind - WSIZE+1] += f*0.4;    //(-1, 1)
+    if(pos.y < quad::tilesize-1)
+      density[ind - quad::tilesize+1] += f*0.4;    //(-1, 1)
   }
 
-  if(pos.x < WSIZE-1){
+  if(pos.x < quad::tilesize-1){
     //
-    density[ind + WSIZE] += f*0.6;    //(1, 0)
+    density[ind + quad::tilesize] += f*0.6;    //(1, 0)
 
     if(pos.y > 0)
-      density[ind + WSIZE-1] += f*0.4;    //(1, -1)
+      density[ind + quad::tilesize-1] += f*0.4;    //(1, -1)
 
-    if(pos.y < WSIZE-1)
-      density[ind + WSIZE+1] += f*0.4;    //(1, 1)
+    if(pos.y < quad::tilesize-1)
+      density[ind + quad::tilesize+1] += f*0.4;    //(1, 1)
   }
 
   if(pos.y > 0)
     density[ind - 1]   += f*0.6;    //(0, -1)
 
-  if(pos.y < WSIZE-1)
+  if(pos.y < quad::tilesize-1)
     density[ind + 1]   += f*0.6;    //(0, 1)
 }
 

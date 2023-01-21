@@ -107,6 +107,22 @@ struct pool {
 
 namespace quad {
 
+const int mapscale = 80;
+
+const int tilesize = 512;
+const int tilearea = tilesize*tilesize;
+const ivec2 tileres = ivec2(tilesize);
+
+const int mapsize = 2;
+const int maparea = mapsize*mapsize;
+
+const int size = mapsize*tilesize;
+const int area = maparea*tilearea;
+const ivec2 res = ivec2(size);
+
+const int levelsize = 8;
+const int levelarea = levelsize*levelsize;
+
 // Raw Interleaved Cell Data
 struct cell {
 
@@ -147,6 +163,28 @@ struct node {
 
 };
 
+template<int N>
+void indexnode(Vertexpool<Vertex>& vertexpool, quad::node& t){
+
+  for(int i = 0; i < (t.res.x)/N-1; i++){
+  for(int j = 0; j < (t.res.y)/N-1; j++){
+
+    vertexpool.indices.push_back(math::flatten(ivec2(i, j), t.res/N));
+    vertexpool.indices.push_back(math::flatten(ivec2(i, j+1), t.res/N));
+    vertexpool.indices.push_back(math::flatten(ivec2(i+1, j), t.res/N));
+
+    vertexpool.indices.push_back(math::flatten(ivec2(i+1, j), t.res/N));
+    vertexpool.indices.push_back(math::flatten(ivec2(i, j+1), t.res/N));
+    vertexpool.indices.push_back(math::flatten(ivec2(i+1, j+1), t.res/N));
+
+  }}
+
+  vertexpool.resize(t.vertex, vertexpool.indices.size());
+  vertexpool.index();
+  vertexpool.update();
+
+}
+
 struct map {
 
   vector<node> nodes;
@@ -160,6 +198,27 @@ struct map {
     _max = max(_max, n.pos + n.res);
   }
 
+  void init(Vertexpool<Vertex>& vertexpool, mappool::pool<cell>& cellpool){
+
+    for(int i = 0; i < mapsize; i++)
+    for(int j = 0; j < mapsize; j++){
+
+      add({
+        tileres*ivec2(i, j),
+        tileres,
+        vertexpool.section(tilearea/levelarea, 0, glm::vec3(0), vertexpool.indices.size())
+      });
+
+      nodes.back().s = {
+        cellpool.get(tilearea/levelarea), tileres/levelsize, levelsize
+      };
+
+      indexnode<levelsize>(vertexpool, nodes.back());
+
+    }
+
+  }
+
   const inline bool oob(ivec2 p){
     if(p.x  < _min.x)  return true;
     if(p.y  < _min.y)  return true;
@@ -170,8 +229,8 @@ struct map {
 
   inline node* get(ivec2 p){
     if(oob(p)) return NULL;
-    p /= ivec2(WSIZE, WSIZE);
-    int ind = p.x*TILES + p.y;
+    p /= tileres;
+    int ind = p.x*mapsize + p.y;
     return &nodes[ind];
   }
 
@@ -216,20 +275,20 @@ using namespace glm;
 vec3 normal(quad::node& t, ivec2 p){
 
   vec3 n = vec3(0, 0, 0);
-  const vec3 s = vec3(1.0, SCALE, 1.0);
+  const vec3 s = vec3(1.0, quad::mapscale, 1.0);
 
-  if(!t.oob(p + RES*ivec2( 1, 1)))
-    n += cross( s*vec3( 0.0, t.height(p+RES*ivec2( 0, 1)) - t.height(p), 1.0), s*vec3( 1.0, t.height(p+RES*ivec2( 1, 0)) - t.height(p), 0.0));
+  if(!t.oob(p + quad::levelsize*ivec2( 1, 1)))
+    n += cross( s*vec3( 0.0, t.height(p+quad::levelsize*ivec2( 0, 1)) - t.height(p), 1.0), s*vec3( 1.0, t.height(p+quad::levelsize*ivec2( 1, 0)) - t.height(p), 0.0));
 
-  if(!t.oob(p + RES*ivec2(-1,-1)))
-    n += cross( s*vec3( 0.0, t.height(p-RES*ivec2( 0, 1)) - t.height(p),-1.0), s*vec3(-1.0, t.height(p-RES*ivec2( 1, 0)) - t.height(p), 0.0));
+  if(!t.oob(p + quad::levelsize*ivec2(-1,-1)))
+    n += cross( s*vec3( 0.0, t.height(p-quad::levelsize*ivec2( 0, 1)) - t.height(p),-1.0), s*vec3(-1.0, t.height(p-quad::levelsize*ivec2( 1, 0)) - t.height(p), 0.0));
 
   //Two Alternative Planes (+X -> -Y) (-X -> +Y)
-  if(!t.oob(p + RES*ivec2( 1,-1)))
-    n += cross( s*vec3( 1.0, t.height(p+RES*ivec2( 1, 0)) - t.height(p), 0.0), s*vec3( 0.0, t.height(p-RES*ivec2( 0, 1)) - t.height(p),-1.0));
+  if(!t.oob(p + quad::levelsize*ivec2( 1,-1)))
+    n += cross( s*vec3( 1.0, t.height(p+quad::levelsize*ivec2( 1, 0)) - t.height(p), 0.0), s*vec3( 0.0, t.height(p-quad::levelsize*ivec2( 0, 1)) - t.height(p),-1.0));
 
-  if(!t.oob(p + RES*ivec2(-1, 1)))
-    n += cross( s*vec3(-1.0, t.height(p-RES*ivec2( 1, 0)) - t.height(p), 0.0), s*vec3( 0.0, t.height(p+RES*ivec2( 0, 1)) - t.height(p), 1.0));
+  if(!t.oob(p + quad::levelsize*ivec2(-1, 1)))
+    n += cross( s*vec3(-1.0, t.height(p-quad::levelsize*ivec2( 1, 0)) - t.height(p), 0.0), s*vec3( 0.0, t.height(p+quad::levelsize*ivec2( 0, 1)) - t.height(p), 1.0));
 
   if(length(n) > 0)
     n = normalize(n);
@@ -241,20 +300,20 @@ vec3 normal(quad::node& t, ivec2 p){
 vec3 normal(quad::map& t, ivec2 p){
 
   vec3 n = vec3(0, 0, 0);
-  const vec3 s = vec3(1.0, SCALE, 1.0);
+  const vec3 s = vec3(1.0, quad::mapscale, 1.0);
 
-  if(!t.oob(p + RES*ivec2( 1, 1)))
-    n += cross( s*vec3( 0.0, t.height(p+RES*ivec2( 0, 1)) - t.height(p), 1.0), s*vec3( 1.0, t.height(p+RES*ivec2( 1, 0)) - t.height(p), 0.0));
+  if(!t.oob(p + quad::levelsize*ivec2( 1, 1)))
+    n += cross( s*vec3( 0.0, t.height(p+quad::levelsize*ivec2( 0, 1)) - t.height(p), 1.0), s*vec3( 1.0, t.height(p+quad::levelsize*ivec2( 1, 0)) - t.height(p), 0.0));
 
-  if(!t.oob(p + RES*ivec2(-1,-1)))
-    n += cross( s*vec3( 0.0, t.height(p-RES*ivec2( 0, 1)) - t.height(p),-1.0), s*vec3(-1.0, t.height(p-RES*ivec2( 1, 0)) - t.height(p), 0.0));
+  if(!t.oob(p + quad::levelsize*ivec2(-1,-1)))
+    n += cross( s*vec3( 0.0, t.height(p-quad::levelsize*ivec2( 0, 1)) - t.height(p),-1.0), s*vec3(-1.0, t.height(p-quad::levelsize*ivec2( 1, 0)) - t.height(p), 0.0));
 
   //Two Alternative Planes (+X -> -Y) (-X -> +Y)
-  if(!t.oob(p + RES*ivec2( 1,-1)))
-    n += cross( s*vec3( 1.0, t.height(p+RES*ivec2( 1, 0)) - t.height(p), 0.0), s*vec3( 0.0, t.height(p-RES*ivec2( 0, 1)) - t.height(p),-1.0));
+  if(!t.oob(p + quad::levelsize*ivec2( 1,-1)))
+    n += cross( s*vec3( 1.0, t.height(p+quad::levelsize*ivec2( 1, 0)) - t.height(p), 0.0), s*vec3( 0.0, t.height(p-quad::levelsize*ivec2( 0, 1)) - t.height(p),-1.0));
 
-  if(!t.oob(p + RES*ivec2(-1, 1)))
-    n += cross( s*vec3(-1.0, t.height(p-RES*ivec2( 1, 0)) - t.height(p), 0.0), s*vec3( 0.0, t.height(p+RES*ivec2( 0, 1)) - t.height(p), 1.0));
+  if(!t.oob(p + quad::levelsize*ivec2(-1, 1)))
+    n += cross( s*vec3(-1.0, t.height(p-quad::levelsize*ivec2( 1, 0)) - t.height(p), 0.0), s*vec3( 0.0, t.height(p+quad::levelsize*ivec2( 0, 1)) - t.height(p), 1.0));
 
   if(length(n) > 0)
     n = normalize(n);
@@ -269,28 +328,6 @@ vec3 normal(quad::map& t, ivec2 p){
 };
 
 template<int N>
-void indexnode(Vertexpool<Vertex>& vertexpool, quad::node& t){
-
-  for(int i = 0; i < (t.res.x)/N-1; i++){
-  for(int j = 0; j < (t.res.y)/N-1; j++){
-
-    vertexpool.indices.push_back(math::flatten(ivec2(i, j), t.res/N));
-    vertexpool.indices.push_back(math::flatten(ivec2(i, j+1), t.res/N));
-    vertexpool.indices.push_back(math::flatten(ivec2(i+1, j), t.res/N));
-
-    vertexpool.indices.push_back(math::flatten(ivec2(i+1, j), t.res/N));
-    vertexpool.indices.push_back(math::flatten(ivec2(i, j+1), t.res/N));
-    vertexpool.indices.push_back(math::flatten(ivec2(i+1, j+1), t.res/N));
-
-  }}
-
-  vertexpool.resize(t.vertex, vertexpool.indices.size());
-  vertexpool.index();
-  vertexpool.update();
-
-}
-
-template<int N>
 void updatenode(Vertexpool<Vertex>& vertexpool, quad::node& t){
 
   for(int i = 0; i < t.res.x/N; i++)
@@ -299,7 +336,7 @@ void updatenode(Vertexpool<Vertex>& vertexpool, quad::node& t){
     float hash = 0.0f;//hashrand(math::flatten(ivec2(i, j), t.res));
     float p = t.discharge(t.pos + N*ivec2(i, j));
 
-    float height = SCALE*t.height(t.pos + N*ivec2(i, j));
+    float height = quad::mapscale*t.height(t.pos + N*ivec2(i, j));
     glm::vec3 color = flatColor;
 
     glm::vec3 normal = reduce::normal(t, t.pos + N*ivec2(i, j));
