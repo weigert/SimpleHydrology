@@ -10,7 +10,7 @@
 #include "source/vertexpool.h"
 #include "source/world.h"
 
-CellPool<MapCell> cellpool;
+mappool::pool<reduce::cell> cellpool;
 Vertexpool<Vertex> vertexpool;
 
 int main( int argc, char* args[] ) {
@@ -30,13 +30,18 @@ int main( int argc, char* args[] ) {
 
   for(int i = 0; i < 1; i++)
   for(int j = 0; j < 1; j++){
-    world.indices.emplace_back(
+
+    quadmap::slice<reduce::cell> s = {
+      cellpool.get(WSIZE*WSIZE), ivec2(WSIZE, WSIZE)
+    };
+
+    world.map.indices.emplace_back(
       ivec2(i*WSIZE, j*WSIZE),
       World::dim,
-      cellpool.get(WSIZE*WSIZE),
+      s,
       vertexpool.section(WSIZE*WSIZE, 0, glm::vec3(0), vertexpool.indices.size())
     );
-    indexmap(vertexpool, world.indices.back());
+    indexmap(vertexpool, world.map.indices.back());
   }
 
 
@@ -55,7 +60,7 @@ int main( int argc, char* args[] ) {
 
   //Vertexpool for Drawing Surface
 
-  for(auto& index: world.indices){
+  for(auto& index: world.map.indices){
     updatemap(vertexpool, index);
   }
 
@@ -234,7 +239,7 @@ int main( int argc, char* args[] ) {
     world.erode(500*FREQUENCY*FREQUENCY); //Execute Erosion Cycles
   //  Vegetation::grow();     //Grow Trees
 
-    for(auto& index: world.indices){
+    for(auto& index: world.map.indices){
       updatemap(vertexpool, index);
     }
 
@@ -243,7 +248,7 @@ int main( int argc, char* args[] ) {
     //Update the Tree Particle System
     treemodels.clear();
     for(auto& t: Vegetation::plants){
-      glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(t.pos.x, t.size + SCALE*world.get(t.pos).height, t.pos.y));
+      glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(t.pos.x, t.size + SCALE*world.map.get(t.pos)->height, t.pos.y));
       model = glm::scale(model, glm::vec3(t.size));
       treemodels.push_back(model);
     }
@@ -263,8 +268,8 @@ int main( int argc, char* args[] ) {
       else
       map.raw(image::make([&](int i){
 
-        float mx = world.get(math::unflatten(i, World::dim)).momentumx;
-        float my = world.get(math::unflatten(i, World::dim)).momentumy;
+        float mx = world.map.get(math::unflatten(i, World::dim))->momentumx;
+        float my = world.map.get(math::unflatten(i, World::dim))->momentumy;
 
         glm::vec4 color = glm::vec4(abs(erf(mx)), 0, abs(erf(my)), 1.0);
 

@@ -75,7 +75,7 @@ bool Plant::die(){
 bool Plant::spawn( vec2 pos ){
 
   if( World::getDischarge(pos) >= Plant::maxDischarge ) return false;
-  glm::vec3 n = World::normal(pos);
+  glm::vec3 n = reduce::normal(World::map, pos);
   if( n.y < Plant::maxSteep ) return false;
 
   return true;
@@ -166,7 +166,7 @@ bool Vegetation::grow(){
     int nind = math::flatten(npos, World::dim);
 
     //Check for Out-Of-Bounds
-    if(World::oob(npos))
+    if(World::map.oob(npos))
       continue;
 
     if(World::getDischarge(npos) >= Plant::maxDischarge)
@@ -175,7 +175,7 @@ bool Vegetation::grow(){
     if((float)(rand()%1000)/1000.0 <= density[nind])
       continue;
 
-    glm::vec3 n = World::normal(npos);
+    glm::vec3 n = reduce::normal(World::map, npos);
 
     if( n.y <= Plant::maxSteep )
       continue;

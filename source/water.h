@@ -60,7 +60,7 @@ bool Drop::descend(float scale){
   // Pointers to Relevant Storage Buffers, Parameters
 
   glm::ivec2 dim = World::dim;
-  glm::vec3 n = World::normal(pos);
+  glm::vec3 n = reduce::normal(World::map, pos);
 
   //Initial Position
 
@@ -70,12 +70,12 @@ bool Drop::descend(float scale){
   // Termination Checks
 
   if(age > maxAge){
-    World::get(ipos).height += sediment;
+    World::map.get(ipos)->height += sediment;
     return false;
   }
 
   if(volume < minVol){
-    World::get(ipos).height += sediment;
+    World::map.get(ipos)->height += sediment;
     return false;
   }
 
@@ -92,9 +92,9 @@ bool Drop::descend(float scale){
 
   // Momentum Transfer Force
 
-  vec2 fspeed = vec2(World::get(ipos).momentumx, World::get(ipos).momentumy);
+  vec2 fspeed = vec2(World::map.get(ipos)->momentumx, World::map.get(ipos)->momentumy);
   if(length(fspeed) > 0 && length(speed) > 0)
-    speed += momentumTransfer*dot(normalize(fspeed), normalize(speed))/(volume + World::get(ipos).discharge)*fspeed;
+    speed += momentumTransfer*dot(normalize(fspeed), normalize(speed))/(volume + World::map.get(ipos)->discharge)*fspeed;
 
   // Dynamic Time-Step, Update
 
@@ -105,9 +105,9 @@ bool Drop::descend(float scale){
 
   // Update Discharge, Momentum Tracking Maps
 
-  World::get(ipos).discharge_track += volume;
-  World::get(ipos).momentumx_track += volume*speed.x;
-  World::get(ipos).momentumy_track += volume*speed.y;
+  World::map.get(ipos)->discharge_track += volume;
+  World::map.get(ipos)->momentumx_track += volume*speed.x;
+  World::map.get(ipos)->momentumy_track += volume*speed.y;
 
 //  track[ind] += volume;
 //  mx[ind] += volume*speed.x;
@@ -115,25 +115,25 @@ bool Drop::descend(float scale){
 
   //Out-Of-Bounds
   float h2;
-  if(World::oob(pos))
-    h2 = World::get(ipos).height-0.003;
+  if(World::map.oob(pos))
+    h2 = World::map.get(ipos)->height-0.003;
   else
-    h2 = World::get(pos).height;
+    h2 = World::map.get(pos)->height;
 
   //Mass-Transfer (in MASS)
-  float c_eq = (1.0f+entrainment*World::getDischarge(ipos))*(World::get(ipos).height-h2);
+  float c_eq = (1.0f+entrainment*World::getDischarge(ipos))*(World::map.get(ipos)->height-h2);
   if(c_eq < 0) c_eq = 0;
   float cdiff = c_eq - sediment;
 
   sediment += effD*cdiff;
-  World::get(ipos).height -= effD*cdiff;
+  World::map.get(ipos)->height -= effD*cdiff;
 
   //Evaporate (Mass Conservative)
   sediment /= (1.0-evapRate);
   volume *= (1.0-evapRate);
 
   //Out-Of-Bounds
-  if(World::oob(pos)){
+  if(World::map.oob(pos)){
     volume = 0.0;
     return false;
   }

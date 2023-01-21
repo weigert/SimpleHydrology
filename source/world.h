@@ -23,7 +23,7 @@ public:
 
   // Storage Arrays
 
-  static vector<MapIndex> indices;
+  static quadmap::map<reduce::cell> map;
 
   // Parameters
 
@@ -35,12 +35,9 @@ public:
   // Main Update Methods
 
   static void generate();                     // Initialize Heightmap
-  static bool oob(ivec2 pos);                 // Check Out-Of-Bounds
 
-  static MapCell& get(vec2 pos);              // Get Surface Height (Reference)
   static float getDischarge(vec2 pos);
 
-  static glm::vec3 normal(vec2 pos);          // Compute Surface Normal
   static void erode(int cycles);              // Erosion Update Step
   static void cascade(vec2 pos);              // Perform Sediment Cascade
 
@@ -49,7 +46,7 @@ public:
 unsigned int World::SEED = 1;
 glm::ivec2 World::dim = glm::vec2(WSIZE, WSIZE);
 
-vector<MapIndex> World::indices;
+quadmap::map<reduce::cell> World::map;
 
 float World::lrate = 0.1f;
 float World::dischargeThresh = 0.4f;
@@ -65,52 +62,8 @@ float World::settling = 0.8f;
 ================================================================================
 */
 
-inline bool World::oob(ivec2 p){
-
-  for(auto& index: indices)
-  if(!index.oob(p))
-    return false;
-  return true;
-
-}
-
-inline MapCell& World::get(vec2 pos){
-
-  for(auto& index: indices)
-  if(!index.oob(pos))
-    return index.get(pos);
-
-  cout<<"FAILURE"<<endl;
-
-}
-
 inline float World::getDischarge(vec2 pos){
-  return erf(dischargeThresh*World::get(pos).discharge);
-}
-
-glm::vec3 World::normal(vec2 pos){
-
-  glm::vec3 n = glm::vec3(0, 1, 0);
-
-  //Two large triangels adjacent to the plane (+Y -> +X) (-Y -> -X)
-  if(!World::oob(pos + glm::vec2( 0, 1)) && !World::oob(pos + glm::vec2( 1, 0)))
-    n += glm::cross(glm::vec3( 0.0, SCALE*(get(pos+glm::vec2(0,1)).height - get(pos).height), 1.0), glm::vec3( 1.0, SCALE*(get(pos+glm::vec2(1,0)).height - get(pos).height), 0.0));
-
-  if(!World::oob(pos + glm::vec2(-1, 0)) && !World::oob(pos + glm::vec2( 0,-1)))
-    n += glm::cross(glm::vec3( 0.0, SCALE*(get(pos-glm::vec2(0,1)).height - get(pos).height),-1.0), glm::vec3(-1.0, SCALE*(get(pos-glm::vec2(1,0)).height - get(pos).height), 0.0));
-
-  //Two Alternative Planes (+X -> -Y) (-X -> +Y)
-  if(!World::oob(pos + glm::vec2( 1, 0)) && !World::oob(pos + glm::vec2( 0,-1)))
-    n += glm::cross(glm::vec3( 1.0, SCALE*(get(pos+glm::vec2(1,0)).height - get(pos).height), 0.0), glm::vec3( 0.0, SCALE*(get(pos-glm::vec2(0,1)).height - get(pos).height),-1.0));
-
-  if(!World::oob(pos + glm::vec2(-1, 0)) && !World::oob(pos + glm::vec2( 0, 1)))
-    n += glm::cross(glm::vec3(-1.0, SCALE*(get(pos-glm::vec2(1,0)).height - get(pos).height), 0.0), glm::vec3( 0.0, SCALE*(get(pos+glm::vec2(0,1)).height - get(pos).height), 1.0));
-
-  if(length(n) > 0)
-    n = glm::normalize(n);
-
-  return n;
-
+  return erf(dischargeThresh*World::map.get(pos)->discharge);
 }
 
 void World::generate(){
@@ -135,23 +88,23 @@ void World::generate(){
 
   float min, max = 0.0;
 
-  for(auto& index: indices){
+  for(auto& index: map.indices){
 
-      for(int i = index.pos.x; i < index.pos.x + index.dim.x; i++)
-      for(int j = index.pos.y; j < index.pos.y + index.dim.y; j++){
-        index.get(ivec2(i, j)).height = noise.GetNoise((double)i/(double)dim.x, (double)j/(double)dim.y, (double)(SEED%10000));
-        if(index.get(ivec2(i, j)).height > max) max = index.get(ivec2(i, j)).height;
-        if(index.get(ivec2(i, j)).height < min) min = index.get(ivec2(i, j)).height;
+      for(int i = index.pos.x; i < index.pos.x + index.res.x; i++)
+      for(int j = index.pos.y; j < index.pos.y + index.res.y; j++){
+        index.get(ivec2(i, j))->height = noise.GetNoise((double)i/(double)dim.x, (double)j/(double)dim.y, (double)(SEED%10000));
+        if(index.get(ivec2(i, j))->height > max) max = index.get(ivec2(i, j))->height;
+        if(index.get(ivec2(i, j))->height < min) min = index.get(ivec2(i, j))->height;
       }
 
   }
 
   //Normalize
-  for(auto& index: indices){
+  for(auto& index: map.indices){
 
-    for(int i = index.pos.x; i < index.pos.x + index.dim.x; i++)
-    for(int j = index.pos.y; j < index.pos.y + index.dim.y; j++){
-      index.get(ivec2(i, j)).height = (index.get(ivec2(i, j)).height - min)/(max - min);
+    for(int i = index.pos.x; i < index.pos.x + index.res.x; i++)
+    for(int j = index.pos.y; j < index.pos.y + index.res.y; j++){
+      index.get(ivec2(i, j))->height = (index.get(ivec2(i, j))->height - min)/(max - min);
     }
 
   }
@@ -165,23 +118,24 @@ void World::generate(){
 */
 void World::erode(int cycles){
 
-  for(auto& index: indices){
+  for(auto& index: map.indices){
 
-    for(int i = index.pos.x; i < index.pos.x + index.dim.x; i++)
-    for(int j = index.pos.y; j < index.pos.y + index.dim.y; j++){
-      index.get(ivec2(i, j)).discharge_track = 0;
-      index.get(ivec2(i, j)).momentumx_track = 0;
-      index.get(ivec2(i, j)).momentumy_track = 0;
+    for(int i = index.pos.x; i < index.pos.x + index.res.x; i++)
+    for(int j = index.pos.y; j < index.pos.y + index.res.y; j++){
+      index.get(ivec2(i, j))->discharge_track = 0;
+      index.get(ivec2(i, j))->momentumx_track = 0;
+      index.get(ivec2(i, j))->momentumy_track = 0;
     }
 
   }
 
   //Do a series of iterations!
-  for(auto& index: indices)
+  for(auto& index: map.indices)
   for(int i = 0; i < cycles; i++){
 
     //Spawn New Particle
-    glm::vec2 newpos = index.randpos();
+
+    glm::vec2 newpos = index.pos + ivec2(rand()%index.res.x, rand()%index.res.y);
     Drop drop(newpos);
 
     while(drop.descend(SCALE));
@@ -189,14 +143,14 @@ void World::erode(int cycles){
   }
 
   //Update Fields
-  for(auto& index: indices){
+  for(auto& index: map.indices){
 
-    for(int i = index.pos.x; i < index.pos.x + index.dim.x; i++)
-    for(int j = index.pos.y; j < index.pos.y + index.dim.y; j++){
+    for(int i = index.pos.x; i < index.pos.x + index.res.x; i++)
+    for(int j = index.pos.y; j < index.pos.y + index.res.y; j++){
 
-      index.get(ivec2(i, j)).discharge = (1.0-lrate)*index.get(ivec2(i, j)).discharge + lrate*index.get(ivec2(i, j)).discharge_track;//track[math::flatten(ivec2(i, j), World::dim)];
-      index.get(ivec2(i, j)).momentumx = (1.0-lrate)*index.get(ivec2(i, j)).momentumx + lrate*index.get(ivec2(i, j)).momentumx_track;//mx[math::flatten(ivec2(i, j), World::dim)];
-      index.get(ivec2(i, j)).momentumy = (1.0-lrate)*index.get(ivec2(i, j)).momentumy + lrate*index.get(ivec2(i, j)).momentumy_track;//my[math::flatten(ivec2(i, j), World::dim)];
+      index.get(ivec2(i, j))->discharge = (1.0-lrate)*index.get(ivec2(i, j))->discharge + lrate*index.get(ivec2(i, j))->discharge_track;//track[math::flatten(ivec2(i, j), World::dim)];
+      index.get(ivec2(i, j))->momentumx = (1.0-lrate)*index.get(ivec2(i, j))->momentumx + lrate*index.get(ivec2(i, j))->momentumx_track;//mx[math::flatten(ivec2(i, j), World::dim)];
+      index.get(ivec2(i, j))->momentumy = (1.0-lrate)*index.get(ivec2(i, j))->momentumy + lrate*index.get(ivec2(i, j))->momentumy_track;//my[math::flatten(ivec2(i, j), World::dim)];
 
     }
   }
@@ -232,10 +186,10 @@ void World::cascade(vec2 pos){
 
     ivec2 npos = ipos + nn;
 
-    if(World::oob(npos))
+    if(World::map.oob(npos))
       continue;
 
-    sn[num++] = { npos, World::get(npos).height };
+    sn[num++] = { npos, World::map.get(npos)->height };
 
   }
 
@@ -250,7 +204,7 @@ void World::cascade(vec2 pos){
     auto& npos = sn[i].pos;
 
     //Full Height-Different Between Positions!
-    float diff = (World::get(ipos).height - World::get(npos).height);
+    float diff = (World::map.get(ipos)->height - World::map.get(npos)->height);
     if(diff == 0)   //No Height Difference
       continue;
 
@@ -264,12 +218,12 @@ void World::cascade(vec2 pos){
 
     //Cap by Maximum Transferrable Amount
     if(diff > 0){
-      World::get(ipos).height -= transfer;
-      World::get(npos).height += transfer;
+      World::map.get(ipos)->height -= transfer;
+      World::map.get(npos)->height += transfer;
     }
     else{
-      World::get(ipos).height += transfer;
-      World::get(npos).height -= transfer;
+      World::map.get(ipos)->height += transfer;
+      World::map.get(npos)->height -= transfer;
     }
 
   }
