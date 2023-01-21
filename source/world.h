@@ -19,7 +19,7 @@ class World {
 public:
 
   static unsigned int SEED;
-  static quadmap::map<reduce::cell> map;
+  static quad::map map;
 
   // Parameters
 
@@ -39,7 +39,7 @@ public:
 
 unsigned int World::SEED = 1;
 
-quadmap::map<reduce::cell> World::map;
+quad::map World::map;
 
 float World::lrate = 0.1f;
 float World::maxdiff = 0.01f;

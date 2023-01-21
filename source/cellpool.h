@@ -105,18 +105,31 @@ struct pool {
   This is the base-structure for retrieving data.
 */
 
-namespace quadmap {
+namespace quad {
 
-template<typename T>
+// Raw Interleaved Cell Data
+struct cell {
+
+  float height;
+  float discharge;
+  float momentumx;
+  float momentumy;
+
+  float discharge_track;
+  float momentumx_track;
+  float momentumy_track;
+
+};
+
 struct node {
 
   ivec2 pos = ivec2(0); // Absolute World Position
   ivec2 res = ivec2(0); // Absolute Resolution
 
-  uint* vertex = NULL;  // Vertexpool Rendering Pointer
-  mappool::slice<T> s;  // Raw Interleaved Data Slices
+  uint* vertex = NULL;    // Vertexpool Rendering Pointer
+  mappool::slice<cell> s; // Raw Interleaved Data Slices
 
-  inline T* get(const ivec2 p){
+  inline cell* get(const ivec2 p){
     return s.get((p - pos)/s.scale);
   }
 
@@ -124,56 +137,24 @@ struct node {
     return s.oob((p - pos)/s.scale);
   }
 
+  const inline float height(ivec2 p){
+    return get(p)->height;
+  }
+
+  const inline float discharge(ivec2 p){
+    return erf(0.4f*get(p)->discharge);
+  }
+
 };
 
-template<int N, typename T>
-void indexnode(Vertexpool<Vertex>& vertexpool, node<T>& t){
-
-  for(int i = 0; i < (t.res.x)/N-1; i++){
-  for(int j = 0; j < (t.res.y)/N-1; j++){
-
-    vertexpool.indices.push_back(math::flatten(ivec2(i, j), t.res/N));
-    vertexpool.indices.push_back(math::flatten(ivec2(i, j+1), t.res/N));
-    vertexpool.indices.push_back(math::flatten(ivec2(i+1, j), t.res/N));
-
-    vertexpool.indices.push_back(math::flatten(ivec2(i+1, j), t.res/N));
-    vertexpool.indices.push_back(math::flatten(ivec2(i, j+1), t.res/N));
-    vertexpool.indices.push_back(math::flatten(ivec2(i+1, j+1), t.res/N));
-
-  }}
-
-  vertexpool.resize(t.vertex, vertexpool.indices.size());
-  vertexpool.index();
-  vertexpool.update();
-
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-template<typename T>
 struct map {
 
-  vector<node<T>> nodes;
+  vector<node> nodes;
 
   ivec2 _min = ivec2(0);
   ivec2 _max = ivec2(0);
 
-  void add(node<T> n){
+  void add(node n){
     nodes.push_back(n);
     _min = min(_min, n.pos);
     _max = max(_max, n.pos + n.res);
@@ -187,19 +168,28 @@ struct map {
     return false;
   }
 
-  inline node<T>* get(ivec2 p){
-
+  inline node* get(ivec2 p){
     if(oob(p)) return NULL;
-
     p /= ivec2(WSIZE, WSIZE);
     int ind = p.x*TILES + p.y;
     return &nodes[ind];
+  }
 
+  const inline float height(ivec2 p){
+    node* n = get(p);
+    if(n == NULL) return 0.0f;
+    return n->height(p);
+  }
+
+  const inline float discharge(ivec2 p){
+    node* n = get(p);
+    if(n == NULL) return 0.0f;
+    return n->discharge(p);
   }
 
 };
 
-}; // namespace quadmap
+}; // namespace quad
 
 /*
 ================================================================================
@@ -223,88 +213,48 @@ struct map {
 namespace reduce {
 using namespace glm;
 
-// Raw Interleaved Cell Data
-struct cell {
-
-  float height;
-  float discharge;
-  float momentumx;
-  float momentumy;
-
-  float discharge_track;
-  float momentumx_track;
-  float momentumy_track;
-
-};
-
-/*
-    Reduction Functions!
-*/
-
-inline float height(quadmap::node<cell>* t, ivec2 p){
-  return t->get(p)->height;
-}
-
-inline float height(quadmap::map<cell>& t, ivec2 p){
-  if(t.oob(p)) return 0.0f;
-  p /= ivec2(WSIZE, WSIZE);
-  int ind = p.x*TILES + p.y;
-  return height(&t.nodes[ind], p);
-}
-
-inline float discharge(quadmap::node<cell>* t, ivec2 p){
-  return erf(0.4f*t->get(p)->discharge);
-}
-
-inline float discharge(quadmap::map<cell>& t, ivec2 p){
-  if(t.oob(p)) return 0.0f;
-  p /= ivec2(WSIZE, WSIZE);
-  int ind = p.x*TILES + p.y;
-  return discharge(&t.nodes[ind], p);
-}
-
-vec3 normal(quadmap::node<cell>* t, ivec2 p){
-
-  vec3 n = vec3(0, 0, 0);
-  const vec3 s = vec3(1.0, SCALE, 1.0);
-
-  if(!t->oob(p + RES*ivec2( 1, 1)))
-    n += cross( s*vec3( 0.0, height(t, p+RES*ivec2( 0, 1)) - height(t, p), 1.0), s*vec3( 1.0, height(t, p+RES*ivec2( 1, 0)) - height(t, p), 0.0));
-
-  if(!t->oob(p + RES*ivec2(-1,-1)))
-    n += cross( s*vec3( 0.0, height(t, p-RES*ivec2( 0, 1)) - height(t, p),-1.0), s*vec3(-1.0, height(t, p-RES*ivec2( 1, 0)) - height(t, p), 0.0));
-
-  //Two Alternative Planes (+X -> -Y) (-X -> +Y)
-  if(!t->oob(p + RES*ivec2( 1,-1)))
-    n += cross( s*vec3( 1.0, height(t, p+RES*ivec2( 1, 0)) - height(t, p), 0.0), s*vec3( 0.0, height(t, p-RES*ivec2( 0, 1)) - height(t, p),-1.0));
-
-  if(!t->oob(p + RES*ivec2(-1, 1)))
-    n += cross( s*vec3(-1.0, height(t, p-RES*ivec2( 1, 0)) - height(t, p), 0.0), s*vec3( 0.0, height(t, p+RES*ivec2( 0, 1)) - height(t, p), 1.0));
-
-  if(length(n) > 0)
-    n = normalize(n);
-  return n;
-
-}
-
-
-vec3 normal(quadmap::map<cell>& t, ivec2 p){
+vec3 normal(quad::node& t, ivec2 p){
 
   vec3 n = vec3(0, 0, 0);
   const vec3 s = vec3(1.0, SCALE, 1.0);
 
   if(!t.oob(p + RES*ivec2( 1, 1)))
-    n += cross( s*vec3( 0.0, height(t, p+RES*ivec2( 0, 1)) - height(t, p), 1.0), s*vec3( 1.0, height(t, p+RES*ivec2( 1, 0)) - height(t, p), 0.0));
+    n += cross( s*vec3( 0.0, t.height(p+RES*ivec2( 0, 1)) - t.height(p), 1.0), s*vec3( 1.0, t.height(p+RES*ivec2( 1, 0)) - t.height(p), 0.0));
 
   if(!t.oob(p + RES*ivec2(-1,-1)))
-    n += cross( s*vec3( 0.0, height(t, p-RES*ivec2( 0, 1)) - height(t, p),-1.0), s*vec3(-1.0, height(t, p-RES*ivec2( 1, 0)) - height(t, p), 0.0));
+    n += cross( s*vec3( 0.0, t.height(p-RES*ivec2( 0, 1)) - t.height(p),-1.0), s*vec3(-1.0, t.height(p-RES*ivec2( 1, 0)) - t.height(p), 0.0));
 
   //Two Alternative Planes (+X -> -Y) (-X -> +Y)
   if(!t.oob(p + RES*ivec2( 1,-1)))
-    n += cross( s*vec3( 1.0, height(t, p+RES*ivec2( 1, 0)) - height(t, p), 0.0), s*vec3( 0.0, height(t, p-RES*ivec2( 0, 1)) - height(t, p),-1.0));
+    n += cross( s*vec3( 1.0, t.height(p+RES*ivec2( 1, 0)) - t.height(p), 0.0), s*vec3( 0.0, t.height(p-RES*ivec2( 0, 1)) - t.height(p),-1.0));
 
   if(!t.oob(p + RES*ivec2(-1, 1)))
-    n += cross( s*vec3(-1.0, height(t, p-RES*ivec2( 1, 0)) - height(t, p), 0.0), s*vec3( 0.0, height(t, p+RES*ivec2( 0, 1)) - height(t, p), 1.0));
+    n += cross( s*vec3(-1.0, t.height(p-RES*ivec2( 1, 0)) - t.height(p), 0.0), s*vec3( 0.0, t.height(p+RES*ivec2( 0, 1)) - t.height(p), 1.0));
+
+  if(length(n) > 0)
+    n = normalize(n);
+  return n;
+
+}
+
+
+vec3 normal(quad::map& t, ivec2 p){
+
+  vec3 n = vec3(0, 0, 0);
+  const vec3 s = vec3(1.0, SCALE, 1.0);
+
+  if(!t.oob(p + RES*ivec2( 1, 1)))
+    n += cross( s*vec3( 0.0, t.height(p+RES*ivec2( 0, 1)) - t.height(p), 1.0), s*vec3( 1.0, t.height(p+RES*ivec2( 1, 0)) - t.height(p), 0.0));
+
+  if(!t.oob(p + RES*ivec2(-1,-1)))
+    n += cross( s*vec3( 0.0, t.height(p-RES*ivec2( 0, 1)) - t.height(p),-1.0), s*vec3(-1.0, t.height(p-RES*ivec2( 1, 0)) - t.height(p), 0.0));
+
+  //Two Alternative Planes (+X -> -Y) (-X -> +Y)
+  if(!t.oob(p + RES*ivec2( 1,-1)))
+    n += cross( s*vec3( 1.0, t.height(p+RES*ivec2( 1, 0)) - t.height(p), 0.0), s*vec3( 0.0, t.height(p-RES*ivec2( 0, 1)) - t.height(p),-1.0));
+
+  if(!t.oob(p + RES*ivec2(-1, 1)))
+    n += cross( s*vec3(-1.0, t.height(p-RES*ivec2( 1, 0)) - t.height(p), 0.0), s*vec3( 0.0, t.height(p+RES*ivec2( 0, 1)) - t.height(p), 1.0));
 
   if(length(n) > 0)
     n = normalize(n);
@@ -318,19 +268,41 @@ vec3 normal(quadmap::map<cell>& t, ivec2 p){
 
 };
 
-template<int N, typename T>
-void updatenode(Vertexpool<Vertex>& vertexpool, quadmap::node<T>& t){
+template<int N>
+void indexnode(Vertexpool<Vertex>& vertexpool, quad::node& t){
+
+  for(int i = 0; i < (t.res.x)/N-1; i++){
+  for(int j = 0; j < (t.res.y)/N-1; j++){
+
+    vertexpool.indices.push_back(math::flatten(ivec2(i, j), t.res/N));
+    vertexpool.indices.push_back(math::flatten(ivec2(i, j+1), t.res/N));
+    vertexpool.indices.push_back(math::flatten(ivec2(i+1, j), t.res/N));
+
+    vertexpool.indices.push_back(math::flatten(ivec2(i+1, j), t.res/N));
+    vertexpool.indices.push_back(math::flatten(ivec2(i, j+1), t.res/N));
+    vertexpool.indices.push_back(math::flatten(ivec2(i+1, j+1), t.res/N));
+
+  }}
+
+  vertexpool.resize(t.vertex, vertexpool.indices.size());
+  vertexpool.index();
+  vertexpool.update();
+
+}
+
+template<int N>
+void updatenode(Vertexpool<Vertex>& vertexpool, quad::node& t){
 
   for(int i = 0; i < t.res.x/N; i++)
   for(int j = 0; j < t.res.y/N; j++){
 
     float hash = 0.0f;//hashrand(math::flatten(ivec2(i, j), t.res));
-    float p = reduce::discharge(&t, t.pos + N*ivec2(i, j));
+    float p = t.discharge(t.pos + N*ivec2(i, j));
 
-    float height = SCALE*reduce::height(&t, t.pos + N*ivec2(i, j));
+    float height = SCALE*t.height(t.pos + N*ivec2(i, j));
     glm::vec3 color = flatColor;
 
-    glm::vec3 normal = reduce::normal(&t, t.pos + N*ivec2(i, j));
+    glm::vec3 normal = reduce::normal(t, t.pos + N*ivec2(i, j));
     if(normal.y < steepness)
       color = steepColor;
 

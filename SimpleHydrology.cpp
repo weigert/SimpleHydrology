@@ -5,14 +5,14 @@
 #define WSIZE 512
 #define FREQUENCY 1
 #define SCALE 80
-#define RES 8
-#define TILES 2
+#define RES 16
+#define TILES 4
 
 #include "source/model.h"
 #include "source/vertexpool.h"
 #include "source/world.h"
 
-mappool::pool<reduce::cell> cellpool;
+mappool::pool<quad::cell> cellpool;
 Vertexpool<Vertex> vertexpool;
 
 int main( int argc, char* args[] ) {
@@ -268,7 +268,7 @@ int main( int argc, char* args[] ) {
 
       if(viewmomentum)
       map.raw(image::make([&](int i){
-        double t1 = reduce::discharge(World::map, vec2(i/WSIZE, i%WSIZE));
+        double t1 = World::map.discharge(vec2(i/WSIZE, i%WSIZE));
         glm::vec4 color = glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(0.2, 0.5, 1.0, 1.0), t1);
         return color;
       }, ivec2(WSIZE, WSIZE)));

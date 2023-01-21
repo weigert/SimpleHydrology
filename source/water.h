@@ -59,15 +59,15 @@ bool Drop::descend(float scale){
 
   const glm::ivec2 ipos = pos;
 
-  quadmap::node<reduce::cell>* node = World::map.get(ipos);
+  quad::node* node = World::map.get(ipos);
   if(node == NULL)
     return false;
 
-  reduce::cell* cell = node->get(ipos);
+  quad::cell* cell = node->get(ipos);
   if(cell == NULL)
     return false;
 
-  const glm::vec3 n = reduce::normal(node, ipos);
+  const glm::vec3 n = reduce::normal(*node, ipos);
 
   // Termination Checks
 
@@ -119,7 +119,7 @@ bool Drop::descend(float scale){
     h2 = node->get(pos)->height;
 
   //Mass-Transfer (in MASS)
-  float c_eq = (1.0f+entrainment*reduce::discharge(node, ipos))*(cell->height-h2);
+  float c_eq = (1.0f+entrainment*node->discharge(ipos))*(cell->height-h2);
   if(c_eq < 0) c_eq = 0;
   float cdiff = (c_eq - sediment)/(float(RES*RES));
 
