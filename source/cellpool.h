@@ -112,6 +112,10 @@ struct MapIndex {
     return *(cell.start + math::flatten(p-pos, dim));
   }
 
+  ivec2 randpos(){
+      return pos + ivec2(rand()%dim.x, rand()%dim.y);
+  }
+
   inline bool oob(ivec2 p){
     if(p.x >= pos.x + dim.x) return true;
     if(p.y >= pos.y + dim.y) return true;

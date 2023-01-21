@@ -44,8 +44,6 @@ public:
   static void erode(int cycles);              // Erosion Update Step
   static void cascade(vec2 pos);              // Perform Sediment Cascade
 
-  static glm::vec2 randpos();
-
 };
 
 unsigned int World::SEED = 1;
@@ -66,24 +64,6 @@ float World::settling = 0.8f;
                         World Method Implementations
 ================================================================================
 */
-
-inline glm::vec2 World::randpos(){
-
-  // Pick the Area to Spawn
-  int fullarea = 0;
-  for(auto& index: indices)
-    fullarea += index.dim.x*index.dim.y;
-
-  float randval = (float)(rand()%1000)/1000.0f;
-
-  float cumprob = 0;
-  for(auto& index: indices){
-    cumprob += (float)(index.dim.x*index.dim.y)/(float)fullarea;
-    if(randval <= cumprob)
-      return index.pos + glm::ivec2(rand()%index.dim.x, rand()%index.dim.y);
-  }
-
-}
 
 inline bool World::oob(ivec2 p){
 
@@ -197,10 +177,11 @@ void World::erode(int cycles){
   }
 
   //Do a series of iterations!
+  for(auto& index: indices)
   for(int i = 0; i < cycles; i++){
 
     //Spawn New Particle
-    glm::vec2 newpos = World::randpos();
+    glm::vec2 newpos = index.randpos();
     Drop drop(newpos);
 
     while(drop.descend(SCALE));

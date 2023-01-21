@@ -19,55 +19,26 @@ int main( int argc, char* args[] ) {
 
   //Initialize the World
 
-  cellpool.reserve(4*WSIZE*WSIZE);
-  vertexpool.reserve(WSIZE*WSIZE, 4);
+  cellpool.reserve(9*WSIZE*WSIZE);
+  vertexpool.reserve(WSIZE*WSIZE, 9);
 
   World world;
 
-  world.indices.emplace_back(
-    ivec2(0),
-    World::dim,
-    cellpool.get(WSIZE*WSIZE),
-    vertexpool.section(WSIZE*WSIZE, 0, glm::vec3(0), vertexpool.indices.size())
-  );
 
-  indexmap(vertexpool, world.indices.back());
 
-  /*
-  world.indices.emplace_back(
-    ivec2(WSIZE, 0),
-    World::dim/2,
-    cellpool.get(WSIZE*WSIZE/4),
-    vertexpool.section(WSIZE*WSIZE/4, 0, glm::vec3(0), vertexpool.indices.size())
-  );
-  */
+  for(int i = 0; i < 1; i++)
+  for(int j = 0; j < 1; j++){
+    world.indices.emplace_back(
+      ivec2(i*WSIZE, j*WSIZE),
+      World::dim,
+      cellpool.get(WSIZE*WSIZE),
+      vertexpool.section(WSIZE*WSIZE, 0, glm::vec3(0), vertexpool.indices.size())
+    );
+    indexmap(vertexpool, world.indices.back());
+  }
 
-  world.indices.emplace_back(
-    ivec2(WSIZE, 0),
-    World::dim,
-    cellpool.get(WSIZE*WSIZE),
-    vertexpool.section(WSIZE*WSIZE, 0, glm::vec3(0), vertexpool.indices.size())
-  );
 
-  indexmap(vertexpool, world.indices.back());
 
-  world.indices.emplace_back(
-    ivec2(0, WSIZE),
-    World::dim,
-    cellpool.get(WSIZE*WSIZE),
-    vertexpool.section(WSIZE*WSIZE, 0, glm::vec3(0), vertexpool.indices.size())
-  );
-
-  indexmap(vertexpool, world.indices.back());
-
-  world.indices.emplace_back(
-    ivec2(WSIZE, WSIZE),
-    World::dim,
-    cellpool.get(WSIZE*WSIZE),
-    vertexpool.section(WSIZE*WSIZE, 0, glm::vec3(0), vertexpool.indices.size())
-  );
-
-  indexmap(vertexpool, world.indices.back());
 
   if(argc >= 2){
     World::SEED = std::stoi(args[1]);
@@ -174,7 +145,7 @@ int main( int argc, char* args[] ) {
     shadow.target();                  //Prepare Target
     depth.use();                      //Prepare Shader
     depth.uniform("dvp", dvp);
-    vertexpool.render(GL_TRIANGLES, 0, 4);  //Render Surface Model
+    vertexpool.render(GL_TRIANGLES);  //Render Surface Model
 
     if(!Vegetation::plants.empty()){
 
@@ -199,7 +170,7 @@ int main( int argc, char* args[] ) {
     shader.uniform("lightPos", lightPos);
     shader.uniform("lookDir", cam::pos);
     shader.uniform("lightStrength", lightStrength);
-    vertexpool.render(GL_TRIANGLES, 0, 4);    //Render Model
+    vertexpool.render(GL_TRIANGLES);    //Render Model
 
     if(!Vegetation::plants.empty()){
 
@@ -244,17 +215,20 @@ int main( int argc, char* args[] ) {
 
   };
 
+  int n = 0;
   Tiny::loop([&](){
 
     if(paused)
       return;
 
-    world.erode(2000*FREQUENCY*FREQUENCY); //Execute Erosion Cycles
+    world.erode(500*FREQUENCY*FREQUENCY); //Execute Erosion Cycles
   //  Vegetation::grow();     //Grow Trees
 
     for(auto& index: world.indices){
       updatemap(vertexpool, index);
     }
+
+    cout<<n++<<endl;
 
     //Update the Tree Particle System
     treemodels.clear();
