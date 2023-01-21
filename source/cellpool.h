@@ -165,12 +165,6 @@ void indexnode(Vertexpool<Vertex>& vertexpool, node<T>& t){
 
 
 
-/*
-
-
-
-*/
-
 template<typename T>
 struct map {
 
@@ -234,14 +228,14 @@ struct cell {
     Reduction Functions!
 */
 
-inline float height(quadmap::node<cell>& t, ivec2 p){
-  return t.get(p)->height;
+inline float height(quadmap::node<cell>* t, ivec2 p){
+  return t->get(p)->height;
 }
 
 inline float height(quadmap::map<cell>& t, ivec2 p){
   for(auto& node: t.nodes)
   if(!node.oob(p))
-    return height(node, p);
+    return height(&node, p);
   return 0.0f;
 }
 
@@ -257,24 +251,48 @@ inline float discharge(quadmap::map<cell>& t, ivec2 p){
 }
 
 
-template<typename T>
-vec3 normal(T& t, ivec2 p){
+vec3 normal(quadmap::node<cell>* t, ivec2 p){
 
   vec3 n = vec3(0, 0, 0);
   const vec3 s = vec3(1.0, SCALE, 1.0);
 
-  if(!t.oob(p + ivec2( 1, 1)))
-    n += cross( s*vec3( 0.0, height(t, p+ivec2( 0, 1)) - height(t, p), 1.0), s*vec3( 1.0, height(t, p+ivec2( 1, 0)) - height(t, p), 0.0));
+  if(!t->oob(p + RES*ivec2( 1, 1)))
+    n += cross( s*vec3( 0.0, height(t, p+RES*ivec2( 0, 1)) - height(t, p), 1.0), s*vec3( 1.0, height(t, p+RES*ivec2( 1, 0)) - height(t, p), 0.0));
 
-  if(!t.oob(p + ivec2(-1,-1)))
-    n += cross( s*vec3( 0.0, height(t, p-ivec2( 0, 1)) - height(t, p),-1.0), s*vec3(-1.0, height(t, p-ivec2( 1, 0)) - height(t, p), 0.0));
+  if(!t->oob(p + RES*ivec2(-1,-1)))
+    n += cross( s*vec3( 0.0, height(t, p-RES*ivec2( 0, 1)) - height(t, p),-1.0), s*vec3(-1.0, height(t, p-RES*ivec2( 1, 0)) - height(t, p), 0.0));
 
   //Two Alternative Planes (+X -> -Y) (-X -> +Y)
-  if(!t.oob(p + ivec2( 1,-1)))
-    n += cross( s*vec3( 1.0, height(t, p+ivec2( 1, 0)) - height(t, p), 0.0), s*vec3( 0.0, height(t, p-ivec2( 0, 1)) - height(t, p),-1.0));
+  if(!t->oob(p + RES*ivec2( 1,-1)))
+    n += cross( s*vec3( 1.0, height(t, p+RES*ivec2( 1, 0)) - height(t, p), 0.0), s*vec3( 0.0, height(t, p-RES*ivec2( 0, 1)) - height(t, p),-1.0));
 
-  if(!t.oob(p + ivec2(-1, 1)))
-    n += cross( s*vec3(-1.0, height(t, p-ivec2( 1, 0)) - height(t, p), 0.0), s*vec3( 0.0, height(t, p+ivec2( 0, 1)) - height(t, p), 1.0));
+  if(!t->oob(p + RES*ivec2(-1, 1)))
+    n += cross( s*vec3(-1.0, height(t, p-RES*ivec2( 1, 0)) - height(t, p), 0.0), s*vec3( 0.0, height(t, p+RES*ivec2( 0, 1)) - height(t, p), 1.0));
+
+  if(length(n) > 0)
+    n = normalize(n);
+  return n;
+
+}
+
+
+vec3 normal(quadmap::map<cell>& t, ivec2 p){
+
+  vec3 n = vec3(0, 0, 0);
+  const vec3 s = vec3(1.0, SCALE, 1.0);
+
+  if(!t.oob(p + RES*ivec2( 1, 1)))
+    n += cross( s*vec3( 0.0, height(t, p+RES*ivec2( 0, 1)) - height(t, p), 1.0), s*vec3( 1.0, height(t, p+RES*ivec2( 1, 0)) - height(t, p), 0.0));
+
+  if(!t.oob(p + RES*ivec2(-1,-1)))
+    n += cross( s*vec3( 0.0, height(t, p-RES*ivec2( 0, 1)) - height(t, p),-1.0), s*vec3(-1.0, height(t, p-RES*ivec2( 1, 0)) - height(t, p), 0.0));
+
+  //Two Alternative Planes (+X -> -Y) (-X -> +Y)
+  if(!t.oob(p + RES*ivec2( 1,-1)))
+    n += cross( s*vec3( 1.0, height(t, p+RES*ivec2( 1, 0)) - height(t, p), 0.0), s*vec3( 0.0, height(t, p-RES*ivec2( 0, 1)) - height(t, p),-1.0));
+
+  if(!t.oob(p + RES*ivec2(-1, 1)))
+    n += cross( s*vec3(-1.0, height(t, p-RES*ivec2( 1, 0)) - height(t, p), 0.0), s*vec3( 0.0, height(t, p+RES*ivec2( 0, 1)) - height(t, p), 1.0));
 
   if(length(n) > 0)
     n = normalize(n);
@@ -291,16 +309,16 @@ vec3 normal(T& t, ivec2 p){
 template<int N, typename T>
 void updatenode(Vertexpool<Vertex>& vertexpool, quadmap::node<T>& t){
 
-  for(int i = t.pos.x; i < t.pos.x + t.res.x/N; i++)
-  for(int j = t.pos.y; j < t.pos.y + t.res.y/N; j++){
+  for(int i = 0; i < t.res.x/N; i++)
+  for(int j = 0; j < t.res.y/N; j++){
 
     float hash = 0.0f;//hashrand(math::flatten(ivec2(i, j), t.res));
-    float p = reduce::discharge(&t, N*ivec2(i, j));
+    float p = reduce::discharge(&t, t.pos + N*ivec2(i, j));
 
-    float height = SCALE*reduce::height(t, N*ivec2(i, j));
+    float height = SCALE*reduce::height(&t, t.pos + N*ivec2(i, j));
     glm::vec3 color = flatColor;
 
-    glm::vec3 normal = reduce::normal(t, N*ivec2(i, j));
+    glm::vec3 normal = reduce::normal(&t, t.pos + N*ivec2(i, j));
     if(normal.y < steepness)
       color = steepColor;
 
@@ -308,8 +326,8 @@ void updatenode(Vertexpool<Vertex>& vertexpool, quadmap::node<T>& t){
 
     color = glm::mix(color, vec3(0), 0.3*hash*(1.0f-p));
 
-    vertexpool.fill(t.vertex, math::flatten(ivec2(i, j)-t.pos, t.res/N),
-      glm::vec3(N*i, height, N*j),
+    vertexpool.fill(t.vertex, math::flatten(ivec2(i, j), t.res/N),
+      glm::vec3(t.pos.x + N*i, height, t.pos.y + N*j),
       normal,
       vec4(color, 1.0f)
     );

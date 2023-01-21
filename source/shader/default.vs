@@ -43,13 +43,15 @@ float gridSample(int size){
 }
 
 float shade(){
+
+/*
     float shadow = 0.0;
 		int size = 1;
 
     if(greaterThanEqual(ex_Shadow.xy, vec2(0.0f)) == bvec2(true) && lessThanEqual(ex_Shadow.xy, vec2(1.0f)) == bvec2(true))
       shadow = gridSample(size);
-
-		return shadow;
+*/
+		return 0.0;//shadow;
 }
 
 vec4 phong() {

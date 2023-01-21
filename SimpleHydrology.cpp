@@ -5,7 +5,7 @@
 #define WSIZE 512
 #define FREQUENCY 1
 #define SCALE 80
-#define RES 1
+#define RES 8
 
 #include "source/model.h"
 #include "source/vertexpool.h"
@@ -22,18 +22,18 @@ int main( int argc, char* args[] ) {
 
   //Initialize the World
 
-  cellpool.reserve(9*WSIZE*WSIZE);
-  vertexpool.reserve(WSIZE*WSIZE, 9);
+  cellpool.reserve(16*WSIZE*WSIZE);
+  vertexpool.reserve(WSIZE*WSIZE, 16);
 
   World world;
 
-  for(int i = 0; i < 1; i++)
-  for(int j = 0; j < 1; j++){
+  for(int i = 0; i < 4; i++)
+  for(int j = 0; j < 4; j++){
 
     world.map.nodes.emplace_back(
       ivec2(i*WSIZE, j*WSIZE),
       ivec2(WSIZE, WSIZE),
-      vertexpool.section(WSIZE*WSIZE, 0, glm::vec3(0), vertexpool.indices.size())
+      vertexpool.section(WSIZE/RES*WSIZE/RES, 0, glm::vec3(0), vertexpool.indices.size())
     );
 
     world.map.nodes.back().s = {
@@ -43,6 +43,8 @@ int main( int argc, char* args[] ) {
     indexnode<RES>(vertexpool, world.map.nodes.back());
 
   }
+
+  cout<<"AYY"<<endl;
 
 
 
@@ -67,12 +69,15 @@ int main( int argc, char* args[] ) {
 
   world.generate();
 
+  cout<<"AYY"<<endl;
+
   //Vertexpool for Drawing Surface
 
   for(auto& node: world.map.nodes){
     updatenode<RES>(vertexpool, node);
   }
 
+  cout<<"AYY"<<endl;
 
 
 

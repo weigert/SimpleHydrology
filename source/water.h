@@ -67,7 +67,7 @@ bool Drop::descend(float scale){
   if(cell == NULL)
     return false;
 
-  const glm::vec3 n = reduce::normal(World::map, ipos);
+  const glm::vec3 n = reduce::normal(node, ipos);
 
   // Termination Checks
 
@@ -90,26 +90,26 @@ bool Drop::descend(float scale){
 
   // Gravity Force
 
-  speed += gravity*vec2(n.x, n.z)/volume;
+  speed += RES*gravity*vec2(n.x, n.z)/volume;///float(node->s.scale/node->s.scale;
 
   // Momentum Transfer Force
 
   vec2 fspeed = vec2(cell->momentumx, cell->momentumy);
   if(length(fspeed) > 0 && length(speed) > 0)
-    speed += momentumTransfer*dot(normalize(fspeed), normalize(speed))/(volume + cell->discharge)*fspeed;
+    speed += RES*momentumTransfer*dot(normalize(fspeed), normalize(speed))/(volume + cell->discharge)*fspeed;
 
   // Dynamic Time-Step, Update
 
   if(length(speed) > 0)
-    speed = sqrt(2.0f)*normalize(speed);
+    speed = (node->s.scale*sqrt(2.0f))*normalize(speed);
 
   pos   += speed;
 
   // Update Discharge, Momentum Tracking Maps
 
-  cell->discharge_track += volume;
-  cell->momentumx_track += volume*speed.x;
-  cell->momentumy_track += volume*speed.y;
+  cell->discharge_track += volume;///(node->s.scale*node->s.scale);
+  cell->momentumx_track += volume*speed.x;///(node->s.scale*node->s.scale);
+  cell->momentumy_track += volume*speed.y;///(node->s.scale*node->s.scale);
 
   //Out-Of-Bounds
   float h2;
@@ -121,7 +121,7 @@ bool Drop::descend(float scale){
   //Mass-Transfer (in MASS)
   float c_eq = (1.0f+entrainment*reduce::discharge(node, ipos))*(cell->height-h2);
   if(c_eq < 0) c_eq = 0;
-  float cdiff = c_eq - sediment;
+  float cdiff = (c_eq - sediment)/(float(RES*RES));
 
   sediment += effD*cdiff;
   cell->height -= effD*cdiff;

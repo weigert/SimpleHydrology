@@ -120,15 +120,17 @@ void World::erode(int cycles){
 
   }
 
+  float l = lrate;///RES/RES;
+
   //Update Fields
   for(auto& node: map.nodes){
 
     for(int i = node.pos.x; i < node.pos.x + node.res.x; i++)
     for(int j = node.pos.y; j < node.pos.y + node.res.y; j++){
 
-      node.get(ivec2(i, j))->discharge = (1.0-lrate)*node.get(ivec2(i, j))->discharge + lrate*node.get(ivec2(i, j))->discharge_track;//track[math::flatten(ivec2(i, j), World::dim)];
-      node.get(ivec2(i, j))->momentumx = (1.0-lrate)*node.get(ivec2(i, j))->momentumx + lrate*node.get(ivec2(i, j))->momentumx_track;//mx[math::flatten(ivec2(i, j), World::dim)];
-      node.get(ivec2(i, j))->momentumy = (1.0-lrate)*node.get(ivec2(i, j))->momentumy + lrate*node.get(ivec2(i, j))->momentumy_track;//my[math::flatten(ivec2(i, j), World::dim)];
+      node.get(ivec2(i, j))->discharge = (1.0-l)*node.get(ivec2(i, j))->discharge + l*node.get(ivec2(i, j))->discharge_track;//track[math::flatten(ivec2(i, j), World::dim)];
+      node.get(ivec2(i, j))->momentumx = (1.0-l)*node.get(ivec2(i, j))->momentumx + l*node.get(ivec2(i, j))->momentumx_track;//mx[math::flatten(ivec2(i, j), World::dim)];
+      node.get(ivec2(i, j))->momentumy = (1.0-l)*node.get(ivec2(i, j))->momentumy + l*node.get(ivec2(i, j))->momentumy_track;//my[math::flatten(ivec2(i, j), World::dim)];
 
     }
   }
@@ -162,7 +164,7 @@ void World::cascade(vec2 pos){
 
   for(auto& nn: n){
 
-    ivec2 npos = ipos + nn;
+    ivec2 npos = ipos + RES*nn;
 
     if(World::map.oob(npos))
       continue;
@@ -187,7 +189,7 @@ void World::cascade(vec2 pos){
       continue;
 
     //The Amount of Excess Difference!
-    float excess = abs(diff) - maxdiff;
+    float excess = abs(diff) - RES*maxdiff;
     if(excess <= 0)  //No Excess
       continue;
 
