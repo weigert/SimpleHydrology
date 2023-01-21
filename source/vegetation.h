@@ -75,7 +75,7 @@ bool Plant::die(){
 bool Plant::spawn( vec2 pos ){
 
   if( World::map.discharge(pos) >= Plant::maxDischarge ) return false;
-  glm::vec3 n = reduce::normal(World::map, pos);
+  glm::vec3 n = World::map.normal(pos);
   if( n.y < Plant::maxSteep ) return false;
 
   return true;

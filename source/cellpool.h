@@ -103,6 +103,12 @@ struct pool {
 ================================================================================
   A mapslice acts as an indexable, bound-checking structure for this.
   This is the base-structure for retrieving data.
+
+  For now, our map implementation uses a fixed arrangement of tiles.
+  Soon, we will be able to switch to a quadtree with arbitrary shape.
+
+  Finally, we can make the nodes have multiple scales and reimplement
+  their retrieval functions.
 */
 
 namespace quad {
@@ -113,15 +119,40 @@ const int tilesize = 512;
 const int tilearea = tilesize*tilesize;
 const ivec2 tileres = ivec2(tilesize);
 
-const int mapsize = 2;
+const int mapsize = 1;
 const int maparea = mapsize*mapsize;
 
 const int size = mapsize*tilesize;
 const int area = maparea*tilearea;
 const ivec2 res = ivec2(size);
 
-const int levelsize = 8;
+const int levelsize = 1;
 const int levelarea = levelsize*levelsize;
+
+template<typename T>
+vec3 _normal(T& t, ivec2 p){
+
+  vec3 n = vec3(0, 0, 0);
+  const vec3 s = vec3(1.0, quad::mapscale, 1.0);
+
+  if(!t.oob(p + quad::levelsize*ivec2( 1, 1)))
+    n += cross( s*vec3( 0.0, t.height(p+quad::levelsize*ivec2( 0, 1)) - t.height(p), 1.0), s*vec3( 1.0, t.height(p+quad::levelsize*ivec2( 1, 0)) - t.height(p), 0.0));
+
+  if(!t.oob(p + quad::levelsize*ivec2(-1,-1)))
+    n += cross( s*vec3( 0.0, t.height(p-quad::levelsize*ivec2( 0, 1)) - t.height(p),-1.0), s*vec3(-1.0, t.height(p-quad::levelsize*ivec2( 1, 0)) - t.height(p), 0.0));
+
+  //Two Alternative Planes (+X -> -Y) (-X -> +Y)
+  if(!t.oob(p + quad::levelsize*ivec2( 1,-1)))
+    n += cross( s*vec3( 1.0, t.height(p+quad::levelsize*ivec2( 1, 0)) - t.height(p), 0.0), s*vec3( 0.0, t.height(p-quad::levelsize*ivec2( 0, 1)) - t.height(p),-1.0));
+
+  if(!t.oob(p + quad::levelsize*ivec2(-1, 1)))
+    n += cross( s*vec3(-1.0, t.height(p-quad::levelsize*ivec2( 1, 0)) - t.height(p), 0.0), s*vec3( 0.0, t.height(p+quad::levelsize*ivec2( 0, 1)) - t.height(p), 1.0));
+
+  if(length(n) > 0)
+    n = normalize(n);
+  return n;
+
+}
 
 // Raw Interleaved Cell Data
 struct cell {
@@ -161,6 +192,10 @@ struct node {
     return erf(0.4f*get(p)->discharge);
   }
 
+  const inline vec3 normal(ivec2 p){
+    return _normal(*this, p);
+  }
+
 };
 
 template<int N>
@@ -185,45 +220,68 @@ void indexnode(Vertexpool<Vertex>& vertexpool, quad::node& t){
 
 }
 
+template<int N>
+void updatenode(Vertexpool<Vertex>& vertexpool, quad::node& t){
+
+  for(int i = 0; i < t.res.x/N; i++)
+  for(int j = 0; j < t.res.y/N; j++){
+
+    float hash = 0.0f;//hashrand(math::flatten(ivec2(i, j), t.res));
+    float p = t.discharge(t.pos + N*ivec2(i, j));
+
+    float height = quad::mapscale*t.height(t.pos + N*ivec2(i, j));
+    glm::vec3 color = flatColor;
+
+    glm::vec3 normal = t.normal(t.pos + N*ivec2(i, j));
+    if(normal.y < steepness)
+      color = steepColor;
+
+    color = glm::mix(color, waterColor, p);
+
+    color = glm::mix(color, vec3(0), 0.3*hash*(1.0f-p));
+
+    vertexpool.fill(t.vertex, math::flatten(ivec2(i, j), t.res/N),
+      glm::vec3(t.pos.x + N*i, height, t.pos.y + N*j),
+      normal,
+      vec4(color, 1.0f)
+    );
+
+  }
+
+}
+
 struct map {
 
-  vector<node> nodes;
-
-  ivec2 _min = ivec2(0);
-  ivec2 _max = ivec2(0);
-
-  void add(node n){
-    nodes.push_back(n);
-    _min = min(_min, n.pos);
-    _max = max(_max, n.pos + n.res);
-  }
+  node nodes[maparea];
 
   void init(Vertexpool<Vertex>& vertexpool, mappool::pool<cell>& cellpool){
 
     for(int i = 0; i < mapsize; i++)
     for(int j = 0; j < mapsize; j++){
 
-      add({
+      int ind = i*mapsize + j;
+
+      nodes[ind] = {
         tileres*ivec2(i, j),
         tileres,
         vertexpool.section(tilearea/levelarea, 0, glm::vec3(0), vertexpool.indices.size())
-      });
+      };
 
-      nodes.back().s = {
+      nodes[ind].s = {
         cellpool.get(tilearea/levelarea), tileres/levelsize, levelsize
       };
 
-      indexnode<levelsize>(vertexpool, nodes.back());
+      indexnode<levelsize>(vertexpool, nodes[ind]);
 
     }
 
   }
 
   const inline bool oob(ivec2 p){
-    if(p.x  < _min.x)  return true;
-    if(p.y  < _min.y)  return true;
-    if(p.x >= _max.x)  return true;
-    if(p.y >= _max.y)  return true;
+    if(p.x  < 0)  return true;
+    if(p.y  < 0)  return true;
+    if(p.x >= size)  return true;
+    if(p.y >= size)  return true;
     return false;
   }
 
@@ -246,136 +304,12 @@ struct map {
     return n->discharge(p);
   }
 
+  const inline vec3 normal(ivec2 p){
+    return _normal(*this, p);
+  }
+
 };
 
 }; // namespace quad
-
-/*
-================================================================================
-                Concrete Interleaved Cell Data Implementation
-================================================================================
-  A mapslice acts as an indexable, bound-checking structure for this.
-  This is the base-structure for retrieving data.
-
-  We want a hierarchy of MapCellSegments.
-  They should have different size.
-  I should be able to operate on any specific layer.
-  This means each layer needs its own OOB check and stuff
-
-
-    A number of templated reduction functions are supplied for extracting data
-    as desired. This way we can define reductions for different combinations
-    of slices, e.g. stacked slices.
-
-*/
-
-namespace reduce {
-using namespace glm;
-
-vec3 normal(quad::node& t, ivec2 p){
-
-  vec3 n = vec3(0, 0, 0);
-  const vec3 s = vec3(1.0, quad::mapscale, 1.0);
-
-  if(!t.oob(p + quad::levelsize*ivec2( 1, 1)))
-    n += cross( s*vec3( 0.0, t.height(p+quad::levelsize*ivec2( 0, 1)) - t.height(p), 1.0), s*vec3( 1.0, t.height(p+quad::levelsize*ivec2( 1, 0)) - t.height(p), 0.0));
-
-  if(!t.oob(p + quad::levelsize*ivec2(-1,-1)))
-    n += cross( s*vec3( 0.0, t.height(p-quad::levelsize*ivec2( 0, 1)) - t.height(p),-1.0), s*vec3(-1.0, t.height(p-quad::levelsize*ivec2( 1, 0)) - t.height(p), 0.0));
-
-  //Two Alternative Planes (+X -> -Y) (-X -> +Y)
-  if(!t.oob(p + quad::levelsize*ivec2( 1,-1)))
-    n += cross( s*vec3( 1.0, t.height(p+quad::levelsize*ivec2( 1, 0)) - t.height(p), 0.0), s*vec3( 0.0, t.height(p-quad::levelsize*ivec2( 0, 1)) - t.height(p),-1.0));
-
-  if(!t.oob(p + quad::levelsize*ivec2(-1, 1)))
-    n += cross( s*vec3(-1.0, t.height(p-quad::levelsize*ivec2( 1, 0)) - t.height(p), 0.0), s*vec3( 0.0, t.height(p+quad::levelsize*ivec2( 0, 1)) - t.height(p), 1.0));
-
-  if(length(n) > 0)
-    n = normalize(n);
-  return n;
-
-}
-
-
-vec3 normal(quad::map& t, ivec2 p){
-
-  vec3 n = vec3(0, 0, 0);
-  const vec3 s = vec3(1.0, quad::mapscale, 1.0);
-
-  if(!t.oob(p + quad::levelsize*ivec2( 1, 1)))
-    n += cross( s*vec3( 0.0, t.height(p+quad::levelsize*ivec2( 0, 1)) - t.height(p), 1.0), s*vec3( 1.0, t.height(p+quad::levelsize*ivec2( 1, 0)) - t.height(p), 0.0));
-
-  if(!t.oob(p + quad::levelsize*ivec2(-1,-1)))
-    n += cross( s*vec3( 0.0, t.height(p-quad::levelsize*ivec2( 0, 1)) - t.height(p),-1.0), s*vec3(-1.0, t.height(p-quad::levelsize*ivec2( 1, 0)) - t.height(p), 0.0));
-
-  //Two Alternative Planes (+X -> -Y) (-X -> +Y)
-  if(!t.oob(p + quad::levelsize*ivec2( 1,-1)))
-    n += cross( s*vec3( 1.0, t.height(p+quad::levelsize*ivec2( 1, 0)) - t.height(p), 0.0), s*vec3( 0.0, t.height(p-quad::levelsize*ivec2( 0, 1)) - t.height(p),-1.0));
-
-  if(!t.oob(p + quad::levelsize*ivec2(-1, 1)))
-    n += cross( s*vec3(-1.0, t.height(p-quad::levelsize*ivec2( 1, 0)) - t.height(p), 0.0), s*vec3( 0.0, t.height(p+quad::levelsize*ivec2( 0, 1)) - t.height(p), 1.0));
-
-  if(length(n) > 0)
-    n = normalize(n);
-  return n;
-
-}
-
-
-
-
-
-};
-
-template<int N>
-void updatenode(Vertexpool<Vertex>& vertexpool, quad::node& t){
-
-  for(int i = 0; i < t.res.x/N; i++)
-  for(int j = 0; j < t.res.y/N; j++){
-
-    float hash = 0.0f;//hashrand(math::flatten(ivec2(i, j), t.res));
-    float p = t.discharge(t.pos + N*ivec2(i, j));
-
-    float height = quad::mapscale*t.height(t.pos + N*ivec2(i, j));
-    glm::vec3 color = flatColor;
-
-    glm::vec3 normal = reduce::normal(t, t.pos + N*ivec2(i, j));
-    if(normal.y < steepness)
-      color = steepColor;
-
-    color = glm::mix(color, waterColor, p);
-
-    color = glm::mix(color, vec3(0), 0.3*hash*(1.0f-p));
-
-    vertexpool.fill(t.vertex, math::flatten(ivec2(i, j), t.res/N),
-      glm::vec3(t.pos.x + N*i, height, t.pos.y + N*j),
-      normal,
-      vec4(color, 1.0f)
-    );
-
-  }
-
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 #endif

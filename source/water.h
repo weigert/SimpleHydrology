@@ -67,7 +67,7 @@ bool Drop::descend(){
   if(cell == NULL)
     return false;
 
-  const glm::vec3 n = reduce::normal(*node, ipos);
+  const glm::vec3 n = node->normal(ipos);
 
   // Termination Checks
 
