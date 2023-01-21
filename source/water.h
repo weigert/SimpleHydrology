@@ -107,9 +107,9 @@ bool Drop::descend(float scale){
 
   // Update Discharge, Momentum Tracking Maps
 
-  cell->discharge_track += volume;///(node->s.scale*node->s.scale);
-  cell->momentumx_track += volume*speed.x;///(node->s.scale*node->s.scale);
-  cell->momentumy_track += volume*speed.y;///(node->s.scale*node->s.scale);
+  cell->discharge_track += volume/float(RES);///(node->s.scale*node->s.scale);
+  cell->momentumx_track += volume*speed.x/float(RES);///(node->s.scale*node->s.scale);
+  cell->momentumy_track += volume*speed.y/float(RES);///(node->s.scale*node->s.scale);
 
   //Out-Of-Bounds
   float h2;

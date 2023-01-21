@@ -170,18 +170,31 @@ struct map {
 
   vector<node<T>> nodes;
 
-  const inline bool oob(ivec2 p){
-    for(auto& node: nodes)
-    if(!node.oob(p))
-      return false;
-    return true;
+  ivec2 _min = ivec2(0);
+  ivec2 _max = ivec2(0);
+
+  void add(node<T> n){
+    nodes.push_back(n);
+    _min = min(_min, n.pos);
+    _max = max(_max, n.pos + n.res);
   }
 
-  inline node<T>* get(const ivec2 p){
-    for(auto& node: nodes)
-    if(!node.oob(p))
-      return &node;
-    return NULL;
+  const inline bool oob(ivec2 p){
+    if(p.x  < _min.x)  return true;
+    if(p.y  < _min.y)  return true;
+    if(p.x >= _max.x)  return true;
+    if(p.y >= _max.y)  return true;
+    return false;
+  }
+
+  inline node<T>* get(ivec2 p){
+
+    if(oob(p)) return NULL;
+
+    p /= ivec2(WSIZE, WSIZE);
+    int ind = p.x*TILES + p.y;
+    return &nodes[ind];
+
   }
 
 };
@@ -233,10 +246,10 @@ inline float height(quadmap::node<cell>* t, ivec2 p){
 }
 
 inline float height(quadmap::map<cell>& t, ivec2 p){
-  for(auto& node: t.nodes)
-  if(!node.oob(p))
-    return height(&node, p);
-  return 0.0f;
+  if(t.oob(p)) return 0.0f;
+  p /= ivec2(WSIZE, WSIZE);
+  int ind = p.x*TILES + p.y;
+  return height(&t.nodes[ind], p);
 }
 
 inline float discharge(quadmap::node<cell>* t, ivec2 p){
@@ -244,12 +257,11 @@ inline float discharge(quadmap::node<cell>* t, ivec2 p){
 }
 
 inline float discharge(quadmap::map<cell>& t, ivec2 p){
-  for(auto& node: t.nodes)
-  if(!node.oob(p))
-    return discharge(&node, p);
-  return 0.0f;
+  if(t.oob(p)) return 0.0f;
+  p /= ivec2(WSIZE, WSIZE);
+  int ind = p.x*TILES + p.y;
+  return discharge(&t.nodes[ind], p);
 }
-
 
 vec3 normal(quadmap::node<cell>* t, ivec2 p){
 
