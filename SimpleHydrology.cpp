@@ -38,7 +38,7 @@ int main( int argc, char* args[] ) {
   //Vertexpool for Drawing Surface
 
   for(auto& node: world.map.nodes){
-    updatenode<quad::levelsize>(vertexpool, node);
+    updatenode(vertexpool, node);
   }
 
 
@@ -216,7 +216,7 @@ int main( int argc, char* args[] ) {
   //  Vegetation::grow();     //Grow Trees
 
     for(auto& node: world.map.nodes){
-      updatenode<quad::levelsize>(vertexpool, node);
+      updatenode(vertexpool, node);
     }
 
     cout<<n++<<endl;

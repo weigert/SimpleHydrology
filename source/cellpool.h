@@ -170,8 +170,6 @@ struct cell {
 struct node {
 
   ivec2 pos = ivec2(0); // Absolute World Position
-  ivec2 res = ivec2(0); // Absolute Resolution
-
   uint* vertex = NULL;    // Vertexpool Rendering Pointer
   mappool::slice<cell> s; // Raw Interleaved Data Slices
 
@@ -197,19 +195,18 @@ struct node {
 
 };
 
-template<int N>
 void indexnode(Vertexpool<Vertex>& vertexpool, quad::node& t){
 
-  for(int i = 0; i < (t.res.x)/N-1; i++){
-  for(int j = 0; j < (t.res.y)/N-1; j++){
+  for(int i = 0; i < (tileres.x)/levelsize-1; i++){
+  for(int j = 0; j < (tileres.y)/levelsize-1; j++){
 
-    vertexpool.indices.push_back(math::flatten(ivec2(i, j), t.res/N));
-    vertexpool.indices.push_back(math::flatten(ivec2(i, j+1), t.res/N));
-    vertexpool.indices.push_back(math::flatten(ivec2(i+1, j), t.res/N));
+    vertexpool.indices.push_back(math::flatten(ivec2(i, j), tileres/levelsize));
+    vertexpool.indices.push_back(math::flatten(ivec2(i, j+1), tileres/levelsize));
+    vertexpool.indices.push_back(math::flatten(ivec2(i+1, j), tileres/levelsize));
 
-    vertexpool.indices.push_back(math::flatten(ivec2(i+1, j), t.res/N));
-    vertexpool.indices.push_back(math::flatten(ivec2(i, j+1), t.res/N));
-    vertexpool.indices.push_back(math::flatten(ivec2(i+1, j+1), t.res/N));
+    vertexpool.indices.push_back(math::flatten(ivec2(i+1, j), tileres/levelsize));
+    vertexpool.indices.push_back(math::flatten(ivec2(i, j+1), tileres/levelsize));
+    vertexpool.indices.push_back(math::flatten(ivec2(i+1, j+1), tileres/levelsize));
 
   }}
 
@@ -219,19 +216,18 @@ void indexnode(Vertexpool<Vertex>& vertexpool, quad::node& t){
 
 }
 
-template<int N>
 void updatenode(Vertexpool<Vertex>& vertexpool, quad::node& t){
 
-  for(int i = 0; i < t.res.x/N; i++)
-  for(int j = 0; j < t.res.y/N; j++){
+  for(int i = 0; i < tileres.x/levelsize; i++)
+  for(int j = 0; j < tileres.y/levelsize; j++){
 
     float hash = 0.0f;//hashrand(math::flatten(ivec2(i, j), t.res));
-    float p = t.discharge(t.pos + N*ivec2(i, j));
+    float p = t.discharge(t.pos + levelsize*ivec2(i, j));
 
-    float height = quad::mapscale*t.height(t.pos + N*ivec2(i, j));
+    float height = quad::mapscale*t.height(t.pos + levelsize*ivec2(i, j));
     glm::vec3 color = flatColor;
 
-    glm::vec3 normal = t.normal(t.pos + N*ivec2(i, j));
+    glm::vec3 normal = t.normal(t.pos + levelsize*ivec2(i, j));
     if(normal.y < steepness)
       color = steepColor;
 
@@ -239,8 +235,8 @@ void updatenode(Vertexpool<Vertex>& vertexpool, quad::node& t){
 
     color = glm::mix(color, vec3(0), 0.3*hash*(1.0f-p));
 
-    vertexpool.fill(t.vertex, math::flatten(ivec2(i, j), t.res/N),
-      glm::vec3(t.pos.x + N*i, height, t.pos.y + N*j),
+    vertexpool.fill(t.vertex, math::flatten(ivec2(i, j), tileres/levelsize),
+      glm::vec3(t.pos.x + levelsize*i, height, t.pos.y + levelsize*j),
       normal,
       vec4(color, 1.0f)
     );
@@ -262,15 +258,11 @@ struct map {
 
       nodes[ind] = {
         tileres*ivec2(i, j),
-        tileres,
-        vertexpool.section(tilearea/levelarea, 0, glm::vec3(0), vertexpool.indices.size())
+        vertexpool.section(tilearea/levelarea, 0, glm::vec3(0), vertexpool.indices.size()),
+        { cellpool.get(tilearea/levelarea), tileres/levelsize }
       };
 
-      nodes[ind].s = {
-        cellpool.get(tilearea/levelarea), tileres/levelsize
-      };
-
-      indexnode<levelsize>(vertexpool, nodes[ind]);
+      indexnode(vertexpool, nodes[ind]);
 
     }
 

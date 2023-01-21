@@ -79,8 +79,8 @@ void World::generate(){
   for(auto& node: map.nodes){
 
       // Highest Res
-      for(int i = 0; i < node.res.x; i++)
-      for(int j = 0; j < node.res.y; j++){
+      for(int i = 0; i < quad::tileres.x; i++)
+      for(int j = 0; j < quad::tileres.y; j++){
         vec2 p = (vec2(node.pos) + vec2(i, j))/vec2(quad::tileres);
         node.get(node.pos + ivec2(i, j))->height = noise.GetNoise(p.x, p.y, (float)(SEED%10000));
       }
@@ -98,8 +98,8 @@ void World::erode(int cycles){
 
   for(auto& node: map.nodes){
 
-    for(int i = node.pos.x; i < node.pos.x + node.res.x; i++)
-    for(int j = node.pos.y; j < node.pos.y + node.res.y; j++){
+    for(int i = node.pos.x; i < node.pos.x + quad::tileres.x; i++)
+    for(int j = node.pos.y; j < node.pos.y + quad::tileres.y; j++){
       node.get(ivec2(i, j))->discharge_track = 0;
       node.get(ivec2(i, j))->momentumx_track = 0;
       node.get(ivec2(i, j))->momentumy_track = 0;
@@ -113,7 +113,7 @@ void World::erode(int cycles){
 
     //Spawn New Particle
 
-    glm::vec2 newpos = node.pos + ivec2(rand()%node.res.x, rand()%node.res.y);
+    glm::vec2 newpos = node.pos + ivec2(rand()%quad::tileres.x, rand()%quad::tileres.y);
     Drop drop(newpos);
 
     while(drop.descend());
@@ -125,8 +125,8 @@ void World::erode(int cycles){
   //Update Fields
   for(auto& node: map.nodes){
 
-    for(int i = node.pos.x; i < node.pos.x + node.res.x; i++)
-    for(int j = node.pos.y; j < node.pos.y + node.res.y; j++){
+    for(int i = node.pos.x; i < node.pos.x + quad::tileres.x; i++)
+    for(int j = node.pos.y; j < node.pos.y + quad::tileres.y; j++){
 
       node.get(ivec2(i, j))->discharge = (1.0-l)*node.get(ivec2(i, j))->discharge + l*node.get(ivec2(i, j))->discharge_track;//track[math::flatten(ivec2(i, j), World::dim)];
       node.get(ivec2(i, j))->momentumx = (1.0-l)*node.get(ivec2(i, j))->momentumx + l*node.get(ivec2(i, j))->momentumx_track;//mx[math::flatten(ivec2(i, j), World::dim)];
