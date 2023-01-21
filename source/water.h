@@ -90,7 +90,7 @@ bool Drop::descend(){
 
   // Gravity Force
 
-  speed += quad::levelsize*gravity*vec2(n.x, n.z)/volume;///float(node->s.scale/node->s.scale;
+  speed += quad::levelsize*gravity*vec2(n.x, n.z)/volume;
 
   // Momentum Transfer Force
 
@@ -101,15 +101,15 @@ bool Drop::descend(){
   // Dynamic Time-Step, Update
 
   if(length(speed) > 0)
-    speed = (node->s.scale*sqrt(2.0f))*normalize(speed);
+    speed = (quad::levelsize*sqrt(2.0f))*normalize(speed);
 
   pos   += speed;
 
   // Update Discharge, Momentum Tracking Maps
 
-  cell->discharge_track += volume/float(quad::levelsize);///(node->s.scale*node->s.scale);
-  cell->momentumx_track += volume*speed.x/float(quad::levelsize);///(node->s.scale*node->s.scale);
-  cell->momentumy_track += volume*speed.y/float(quad::levelsize);///(node->s.scale*node->s.scale);
+  cell->discharge_track += volume/float(quad::levelsize);
+  cell->momentumx_track += volume*speed.x/float(quad::levelsize);
+  cell->momentumy_track += volume*speed.y/float(quad::levelsize);
 
   //Out-Of-Bounds
   float h2;

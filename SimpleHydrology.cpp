@@ -59,7 +59,7 @@ int main( int argc, char* args[] ) {
   cam::near = -800.0f;
   cam::far = 800.0f;
   cam::moverate = 10.0f;
-  cam::look = glm::vec3(quad::tilesize/2, 0, quad::tilesize/2);
+  cam::look = glm::vec3(quad::size/2, 0, quad::size/2);
   cam::roty = 45.0f;
   cam::init(3, cam::ORTHO);
   cam::update();
@@ -212,7 +212,7 @@ int main( int argc, char* args[] ) {
     if(paused)
       return;
 
-    world.erode(500); //Execute Erosion Cycles
+    world.erode(quad::tilesize); //Execute Erosion Cycles
   //  Vegetation::grow();     //Grow Trees
 
     for(auto& node: world.map.nodes){

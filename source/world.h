@@ -81,7 +81,7 @@ void World::generate(){
       // Highest Res
       for(int i = 0; i < node.res.x; i++)
       for(int j = 0; j < node.res.y; j++){
-        vec2 p = (vec2(node.pos) + vec2(i, j))/vec2(node.res);
+        vec2 p = (vec2(node.pos) + vec2(i, j))/vec2(quad::tileres);
         node.get(node.pos + ivec2(i, j))->height = noise.GetNoise(p.x, p.y, (float)(SEED%10000));
       }
 

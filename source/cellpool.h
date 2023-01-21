@@ -27,7 +27,6 @@ struct slice {
 
   mappool::buf<T> root;
   ivec2 res = ivec2(0);
-  int scale = 1;
 
   const inline size_t size(){
     return res.x * res.y;
@@ -119,14 +118,14 @@ const int tilesize = 512;
 const int tilearea = tilesize*tilesize;
 const ivec2 tileres = ivec2(tilesize);
 
-const int mapsize = 1;
+const int mapsize = 2;
 const int maparea = mapsize*mapsize;
 
 const int size = mapsize*tilesize;
 const int area = maparea*tilearea;
 const ivec2 res = ivec2(size);
 
-const int levelsize = 1;
+const int levelsize = 2;
 const int levelarea = levelsize*levelsize;
 
 template<typename T>
@@ -177,11 +176,11 @@ struct node {
   mappool::slice<cell> s; // Raw Interleaved Data Slices
 
   inline cell* get(const ivec2 p){
-    return s.get((p - pos)/s.scale);
+    return s.get((p - pos)/levelsize);
   }
 
   const inline bool oob(const ivec2 p){
-    return s.oob((p - pos)/s.scale);
+    return s.oob((p - pos)/levelsize);
   }
 
   const inline float height(ivec2 p){
@@ -268,7 +267,7 @@ struct map {
       };
 
       nodes[ind].s = {
-        cellpool.get(tilearea/levelarea), tileres/levelsize, levelsize
+        cellpool.get(tilearea/levelarea), tileres/levelsize
       };
 
       indexnode<levelsize>(vertexpool, nodes[ind]);
