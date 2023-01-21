@@ -15,6 +15,8 @@ Vertexpool<Vertex> vertexpool;
 
 int main( int argc, char* args[] ) {
 
+  Tiny::view.vsync = false;
+  Tiny::view.antialias = 0;
   Tiny::window("Simple Hydrology", WIDTH, HEIGHT);
 
   //Initialize the World
@@ -88,6 +90,7 @@ int main( int argc, char* args[] ) {
   Shader billboard({"source/shader/billboard.vs", "source/shader/billboard.fs"}, {"in_Quad", "in_Tex"});
   Shader sprite({"source/shader/sprite.vs", "source/shader/sprite.fs"}, {"in_Quad", "in_Tex", "in_Model"});
   Shader spritedepth({"source/shader/spritedepth.vs", "source/shader/spritedepth.fs"}, {"in_Quad", "in_Tex", "in_Model"});
+  Shader heightshader({"source/shader/height.vs", "source/shader/height.fs"}, {"in_Position"});
 
   //Trees as a Particle System
   Square3D treemodel;									//Model we want to instance render!
@@ -101,8 +104,9 @@ int main( int argc, char* args[] ) {
   std::vector<glm::mat4> treemodels;
 
   //Rendering Targets / Framebuffers
-  Billboard image(WIDTH, HEIGHT);     //1200x800, color and depth
-  Billboard shadow(8000, 8000);       //800x800, depth only
+  Billboard image(WIDTH, HEIGHT);             //1200x800, color and depth
+  Billboard heightimage(WIDTH, HEIGHT);     //1200x800, height levels
+  Billboard shadow(8000, 8000);               //800x800, depth only
   Square2D flat;
 
   //Texture for Hydrology Map Visualization
@@ -158,6 +162,11 @@ int main( int argc, char* args[] ) {
 
     }
 
+    heightimage.target(vec3(1,1,1));
+    heightshader.use();
+    heightshader.uniform("vp", cam::vp);
+    vertexpool.render(GL_TRIANGLES);
+
     //Render Scene to Image
 
     image.target(skyCol);
@@ -202,6 +211,7 @@ int main( int argc, char* args[] ) {
     effect.use();                             //Prepare Shader
     effect.texture("imageTexture", image.texture);
     effect.texture("depthTexture", image.depth);
+    effect.texture("heightTexture", heightimage.texture);
     flat.render();                            //Render Image
 
     if(viewmap){
