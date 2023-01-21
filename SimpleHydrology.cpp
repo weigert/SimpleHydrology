@@ -5,6 +5,7 @@
 #define WSIZE 512
 #define FREQUENCY 1
 #define SCALE 80
+#define RES 1
 
 #include "source/model.h"
 #include "source/vertexpool.h"
@@ -26,29 +27,22 @@ int main( int argc, char* args[] ) {
 
   World world;
 
-
-
   for(int i = 0; i < 1; i++)
   for(int j = 0; j < 1; j++){
 
-    world.map.indices.emplace_back(
+    world.map.nodes.emplace_back(
       ivec2(i*WSIZE, j*WSIZE),
-      World::dim,
+      ivec2(WSIZE, WSIZE),
       vertexpool.section(WSIZE*WSIZE, 0, glm::vec3(0), vertexpool.indices.size())
     );
 
-    world.map.indices.back().s = {
-      cellpool.get(WSIZE*WSIZE), ivec2(WSIZE, WSIZE)
+    world.map.nodes.back().s = {
+      cellpool.get(WSIZE/RES*WSIZE/RES), ivec2(WSIZE, WSIZE)/RES, RES
     };
 
-    world.map.indices.back().s2 = {
-      cellpool.get(WSIZE*WSIZE/4), ivec2(WSIZE/2, WSIZE/2)
-    };
-
-    indexmap(vertexpool, world.map.indices.back());
+    indexnode<RES>(vertexpool, world.map.nodes.back());
 
   }
-
 
 
 
@@ -75,8 +69,8 @@ int main( int argc, char* args[] ) {
 
   //Vertexpool for Drawing Surface
 
-  for(auto& index: world.map.indices){
-    updatemap(vertexpool, index);
+  for(auto& node: world.map.nodes){
+    updatenode<RES>(vertexpool, node);
   }
 
 
@@ -134,7 +128,7 @@ int main( int argc, char* args[] ) {
     double t1 = 0.0f;
     glm::vec4 color = glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(0.2, 0.5, 1.0, 1.0), t1);
     return color;
-  }, world.dim));
+  }, ivec2(WSIZE, WSIZE)));
 
   glm::mat4 mapmodel = glm::mat4(1.0f);
 
@@ -254,8 +248,8 @@ int main( int argc, char* args[] ) {
     world.erode(500*FREQUENCY*FREQUENCY); //Execute Erosion Cycles
   //  Vegetation::grow();     //Grow Trees
 
-    for(auto& index: world.map.indices){
-      updatemap(vertexpool, index);
+    for(auto& node: world.map.nodes){
+      updatenode<RES>(vertexpool, node);
     }
 
     cout<<n++<<endl;
@@ -263,7 +257,7 @@ int main( int argc, char* args[] ) {
     //Update the Tree Particle System
     treemodels.clear();
     for(auto& t: Vegetation::plants){
-      glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(t.pos.x, t.size + SCALE*world.map.get(t.pos)->height, t.pos.y));
+      glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(t.pos.x, t.size + SCALE*world.map.get(t.pos)->get(t.pos)->height, t.pos.y));
       model = glm::scale(model, glm::vec3(t.size));
       treemodels.push_back(model);
     }
@@ -275,21 +269,24 @@ int main( int argc, char* args[] ) {
 
       if(viewmomentum)
       map.raw(image::make([&](int i){
-        double t1 = reduce::discharge(World::map, vec2(i/World::dim.y, i%World::dim.y));
+        double t1 = reduce::discharge(World::map, vec2(i/WSIZE, i%WSIZE));
         glm::vec4 color = glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(0.2, 0.5, 1.0, 1.0), t1);
         return color;
-      }, world.dim));
+      }, ivec2(WSIZE, WSIZE)));
 
       else
       map.raw(image::make([&](int i){
 
-        float mx = world.map.get(math::unflatten(i, World::dim))->momentumx;
-        float my = world.map.get(math::unflatten(i, World::dim))->momentumy;
+        auto node = world.map.get(math::unflatten(i, ivec2(WSIZE, WSIZE)));
+        auto cell = node->get(math::unflatten(i, ivec2(WSIZE, WSIZE)));
+
+        float mx = cell->momentumx;
+        float my = cell->momentumy;
 
         glm::vec4 color = glm::vec4(abs(erf(mx)), 0, abs(erf(my)), 1.0);
 
         return color;
-      }, world.dim));
+      }, ivec2(WSIZE, WSIZE)));
     }
 
   });

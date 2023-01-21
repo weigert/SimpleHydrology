@@ -122,6 +122,7 @@ void Plant::root(float* density, glm::ivec2 dim, float f){
 
 bool Vegetation::grow(){
 
+  /*
   //Random Position
   {
 
@@ -184,6 +185,9 @@ bool Vegetation::grow(){
     plants.back().root(density, World::dim, 1.0);
 
   }
+
+  */
+
 
   return true;
 

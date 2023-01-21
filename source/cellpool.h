@@ -21,6 +21,34 @@ struct buf {
 
 };
 
+// Raw Interleaved Data Buffer Slice
+template<typename T>
+struct slice {
+
+  mappool::buf<T> root;
+  ivec2 res = ivec2(0);
+  int scale = 1;
+
+  const inline size_t size(){
+    return res.x * res.y;
+  }
+
+  const inline bool oob(const ivec2 p){
+    if(p.x >= res.x)  return true;
+    if(p.y >= res.y)  return true;
+    if(p.x  < 0)      return true;
+    if(p.y  < 0)      return true;
+    return false;
+  }
+
+  inline T* get(const ivec2 p){
+    if(root.start == NULL) return NULL;
+    if(oob(p)) return NULL;
+    return root.start + math::flatten(p, res);
+  }
+
+};
+
 // Raw Interleaved Data Pool
 template<typename T>
 struct pool {
@@ -79,70 +107,87 @@ struct pool {
 
 namespace quadmap {
 
-// Interleaved Data Slicing Structure
 template<typename T>
-struct slice {
-
-  mappool::buf<T> root;
-  ivec2 res = ivec2(0);
-
-  const inline size_t size(){
-    return res.x * res.y;
-  }
-
-  const inline bool oob(const ivec2 p){
-    if(p.x >= res.x)  return true;
-    if(p.y >= res.y)  return true;
-    if(p.x  < 0)      return true;
-    if(p.y  < 0)      return true;
-    return false;
-  }
-
-  inline T* get(const ivec2 p){
-    if(root.start == NULL) return NULL;
-    if(oob(p)) return NULL;
-    return root.start + math::flatten(p, res);
-  }
-
-};
-
-template<typename T>
-struct index {
+struct node {
 
   ivec2 pos = ivec2(0); // Absolute World Position
   ivec2 res = ivec2(0); // Absolute Resolution
 
   uint* vertex = NULL;  // Vertexpool Rendering Pointer
-  slice<T> s;           // Raw Interleaved Data Slice
-  slice<T> s2;           // Raw Interleaved Data Slice
+  mappool::slice<T> s;  // Raw Interleaved Data Slices
 
   inline T* get(const ivec2 p){
-    return s.get(p - pos);
+    return s.get((p - pos)/s.scale);
   }
 
   const inline bool oob(const ivec2 p){
-    return s.oob(p - pos);
+    return s.oob((p - pos)/s.scale);
   }
 
 };
 
+template<int N, typename T>
+void indexnode(Vertexpool<Vertex>& vertexpool, node<T>& t){
+
+  for(int i = 0; i < (t.res.x)/N-1; i++){
+  for(int j = 0; j < (t.res.y)/N-1; j++){
+
+    vertexpool.indices.push_back(math::flatten(ivec2(i, j), t.res/N));
+    vertexpool.indices.push_back(math::flatten(ivec2(i, j+1), t.res/N));
+    vertexpool.indices.push_back(math::flatten(ivec2(i+1, j), t.res/N));
+
+    vertexpool.indices.push_back(math::flatten(ivec2(i+1, j), t.res/N));
+    vertexpool.indices.push_back(math::flatten(ivec2(i, j+1), t.res/N));
+    vertexpool.indices.push_back(math::flatten(ivec2(i+1, j+1), t.res/N));
+
+  }}
+
+  vertexpool.resize(t.vertex, vertexpool.indices.size());
+  vertexpool.index();
+  vertexpool.update();
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+
+
+
+*/
+
 template<typename T>
 struct map {
 
-  vector<index<T>> indices;
-
-  inline T* get(const ivec2 p){
-    for(auto& index: indices)
-    if(!index.oob(p))
-      return index.get(p);
-    return NULL;
-  }
+  vector<node<T>> nodes;
 
   const inline bool oob(ivec2 p){
-    for(auto& index: indices)
-    if(!index.oob(p))
+    for(auto& node: nodes)
+    if(!node.oob(p))
       return false;
     return true;
+  }
+
+  inline node<T>* get(const ivec2 p){
+    for(auto& node: nodes)
+    if(!node.oob(p))
+      return &node;
+    return NULL;
   }
 
 };
@@ -189,40 +234,47 @@ struct cell {
     Reduction Functions!
 */
 
-inline float height(quadmap::index<cell>& t, vec2 p){
-  return t.s.get(p-vec2(t.pos))->height + t.s2.get((p-vec2(t.pos))/2.0f)->height;
+inline float height(quadmap::node<cell>& t, ivec2 p){
+  return t.get(p)->height;
 }
 
-inline float height(quadmap::map<cell>& t, vec2 p){
-  for(auto& index: t.indices)
-  if(!index.oob(p))
-    return height(index, p);
+inline float height(quadmap::map<cell>& t, ivec2 p){
+  for(auto& node: t.nodes)
+  if(!node.oob(p))
+    return height(node, p);
   return 0.0f;
 }
 
-template<typename T>
-inline float discharge(T& t, vec2 p){
-  return erf(0.4f*t.get(p)->discharge);
+inline float discharge(quadmap::node<cell>* t, ivec2 p){
+  return erf(0.4f*t->get(p)->discharge);
 }
 
+inline float discharge(quadmap::map<cell>& t, ivec2 p){
+  for(auto& node: t.nodes)
+  if(!node.oob(p))
+    return discharge(&node, p);
+  return 0.0f;
+}
+
+
 template<typename T>
-vec3 normal(T& t, vec2 p){
+vec3 normal(T& t, ivec2 p){
 
   vec3 n = vec3(0, 0, 0);
   const vec3 s = vec3(1.0, SCALE, 1.0);
 
-  if(!t.oob(p + vec2( 1, 1)))
-    n += cross( s*vec3( 0.0, height(t, p+vec2( 0, 1)) - height(t, p), 1.0), s*vec3( 1.0, height(t, p+vec2( 1, 0)) - height(t, p), 0.0));
+  if(!t.oob(p + ivec2( 1, 1)))
+    n += cross( s*vec3( 0.0, height(t, p+ivec2( 0, 1)) - height(t, p), 1.0), s*vec3( 1.0, height(t, p+ivec2( 1, 0)) - height(t, p), 0.0));
 
-  if(!t.oob(p + vec2(-1,-1)))
-    n += cross( s*vec3( 0.0, height(t, p-vec2( 0, 1)) - height(t, p),-1.0), s*vec3(-1.0, height(t, p-vec2( 1, 0)) - height(t, p), 0.0));
+  if(!t.oob(p + ivec2(-1,-1)))
+    n += cross( s*vec3( 0.0, height(t, p-ivec2( 0, 1)) - height(t, p),-1.0), s*vec3(-1.0, height(t, p-ivec2( 1, 0)) - height(t, p), 0.0));
 
   //Two Alternative Planes (+X -> -Y) (-X -> +Y)
-  if(!t.oob(p + vec2( 1,-1)))
-    n += cross( s*vec3( 1.0, height(t, p+vec2( 1, 0)) - height(t, p), 0.0), s*vec3( 0.0, height(t, p-vec2( 0, 1)) - height(t, p),-1.0));
+  if(!t.oob(p + ivec2( 1,-1)))
+    n += cross( s*vec3( 1.0, height(t, p+ivec2( 1, 0)) - height(t, p), 0.0), s*vec3( 0.0, height(t, p-ivec2( 0, 1)) - height(t, p),-1.0));
 
-  if(!t.oob(p + vec2(-1, 1)))
-    n += cross( s*vec3(-1.0, height(t, p-vec2( 1, 0)) - height(t, p), 0.0), s*vec3( 0.0, height(t, p+vec2( 0, 1)) - height(t, p), 1.0));
+  if(!t.oob(p + ivec2(-1, 1)))
+    n += cross( s*vec3(-1.0, height(t, p-ivec2( 1, 0)) - height(t, p), 0.0), s*vec3( 0.0, height(t, p+ivec2( 0, 1)) - height(t, p), 1.0));
 
   if(length(n) > 0)
     n = normalize(n);
@@ -230,56 +282,25 @@ vec3 normal(T& t, vec2 p){
 
 }
 
+
+
+
+
 };
 
+template<int N, typename T>
+void updatenode(Vertexpool<Vertex>& vertexpool, quadmap::node<T>& t){
 
+  for(int i = t.pos.x; i < t.pos.x + t.res.x/N; i++)
+  for(int j = t.pos.y; j < t.pos.y + t.res.y/N; j++){
 
+    float hash = 0.0f;//hashrand(math::flatten(ivec2(i, j), t.res));
+    float p = reduce::discharge(&t, N*ivec2(i, j));
 
-
-
-
-
-template<typename T>
-void indexmap(Vertexpool<Vertex>& vertexpool, T& t){
-
-  for(int i = 0; i < t.res.x-1; i++){
-  for(int j = 0; j < t.res.y-1; j++){
-
-    vertexpool.indices.push_back(math::flatten(ivec2(i, j), t.res));
-    vertexpool.indices.push_back(math::flatten(ivec2(i, j+1), t.res));
-    vertexpool.indices.push_back(math::flatten(ivec2(i+1, j), t.res));
-
-    vertexpool.indices.push_back(math::flatten(ivec2(i+1, j), t.res));
-    vertexpool.indices.push_back(math::flatten(ivec2(i, j+1), t.res));
-    vertexpool.indices.push_back(math::flatten(ivec2(i+1, j+1), t.res));
-
-  }}
-
-  vertexpool.resize(t.vertex, vertexpool.indices.size());
-  vertexpool.index();
-  vertexpool.update();
-
-}
-
-//Use the Position Hash (Generates Hash from Index)
-std::hash<std::string> position_hash;
-double hashrand(int i){
-  return (double)(position_hash(std::to_string(i))%1000)/1000.0;
-}
-
-template<typename T>
-void updatemap(Vertexpool<Vertex>& vertexpool, T& t){
-
-  for(int i = t.pos.x; i < t.pos.x + t.res.x; i++)
-  for(int j = t.pos.y; j < t.pos.y + t.res.y; j++){
-
-    float hash = hashrand(math::flatten(ivec2(i, j), t.res));
-    float p = erf(0.4f*t.get(vec2(i, j))->discharge);
-
-    float height = SCALE*reduce::height(t, vec2(i, j));
+    float height = SCALE*reduce::height(t, N*ivec2(i, j));
     glm::vec3 color = flatColor;
 
-    glm::vec3 normal = reduce::normal(t, vec2(i, j));
+    glm::vec3 normal = reduce::normal(t, N*ivec2(i, j));
     if(normal.y < steepness)
       color = steepColor;
 
@@ -287,8 +308,8 @@ void updatemap(Vertexpool<Vertex>& vertexpool, T& t){
 
     color = glm::mix(color, vec3(0), 0.3*hash*(1.0f-p));
 
-    vertexpool.fill(t.vertex, math::flatten(ivec2(i, j)-t.pos, t.res),
-      glm::vec3(i, height, j),
+    vertexpool.fill(t.vertex, math::flatten(ivec2(i, j)-t.pos, t.res/N),
+      glm::vec3(N*i, height, N*j),
       normal,
       vec4(color, 1.0f)
     );
@@ -296,6 +317,13 @@ void updatemap(Vertexpool<Vertex>& vertexpool, T& t){
   }
 
 }
+
+
+
+
+
+
+
 
 
 

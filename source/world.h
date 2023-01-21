@@ -19,10 +19,6 @@ class World {
 public:
 
   static unsigned int SEED;
-  static glm::ivec2 dim;                      //Size of the Map
-
-  // Storage Arrays
-
   static quadmap::map<reduce::cell> map;
 
   // Parameters
@@ -42,7 +38,6 @@ public:
 };
 
 unsigned int World::SEED = 1;
-glm::ivec2 World::dim = glm::vec2(WSIZE, WSIZE);
 
 quadmap::map<reduce::cell> World::map;
 
@@ -81,32 +76,14 @@ void World::generate(){
 
   float min, max = 0.0;
 
-  for(auto& index: map.indices){
+  for(auto& node: map.nodes){
 
       // Highest Res
-      for(int i = 0; i < index.s.res.x; i++)
-      for(int j = 0; j < index.s.res.y; j++){
-        vec2 p = (vec2(index.pos) + vec2(i, j))/vec2(dim);
-        index.s.get(ivec2(i, j))->height = noise.GetNoise(p.x, p.y, (float)(SEED%10000));
-        if(index.s.get(ivec2(i, j))->height > max) max = index.s.get(ivec2(i, j))->height;
-        if(index.s.get(ivec2(i, j))->height < min) min = index.s.get(ivec2(i, j))->height;
+      for(int i = 0; i < node.res.x; i++)
+      for(int j = 0; j < node.res.y; j++){
+        vec2 p = (vec2(node.pos) + vec2(i, j))/vec2(node.res);
+        node.get(node.pos + ivec2(i, j))->height = noise.GetNoise(p.x, p.y, (float)(SEED%10000));
       }
-
-      // Lowest Res
-      for(int i = 0; i < index.s2.res.x; i++)
-      for(int j = 0; j < index.s2.res.y; j++){
-        index.s2.get(ivec2(i, j))->height = (float)i/(float)index.s2.res.x;//0.0f;
-      }
-
-  }
-
-  //Normalize
-  for(auto& index: map.indices){
-
-    for(int i = 0; i < index.s.res.x; i++)
-    for(int j = 0; j < index.s.res.y; j++){
-      index.s.get(ivec2(i, j))->height = (index.s.get(ivec2(i, j))->height - min)/(max - min);
-    }
 
   }
 
@@ -119,24 +96,24 @@ void World::generate(){
 */
 void World::erode(int cycles){
 
-  for(auto& index: map.indices){
+  for(auto& node: map.nodes){
 
-    for(int i = index.pos.x; i < index.pos.x + index.res.x; i++)
-    for(int j = index.pos.y; j < index.pos.y + index.res.y; j++){
-      index.get(ivec2(i, j))->discharge_track = 0;
-      index.get(ivec2(i, j))->momentumx_track = 0;
-      index.get(ivec2(i, j))->momentumy_track = 0;
+    for(int i = node.pos.x; i < node.pos.x + node.res.x; i++)
+    for(int j = node.pos.y; j < node.pos.y + node.res.y; j++){
+      node.get(ivec2(i, j))->discharge_track = 0;
+      node.get(ivec2(i, j))->momentumx_track = 0;
+      node.get(ivec2(i, j))->momentumy_track = 0;
     }
 
   }
 
   //Do a series of iterations!
-  for(auto& index: map.indices)
+  for(auto& node: map.nodes)
   for(int i = 0; i < cycles; i++){
 
     //Spawn New Particle
 
-    glm::vec2 newpos = index.pos + ivec2(rand()%index.res.x, rand()%index.res.y);
+    glm::vec2 newpos = node.pos + ivec2(rand()%node.res.x, rand()%node.res.y);
     Drop drop(newpos);
 
     while(drop.descend(SCALE));
@@ -144,14 +121,14 @@ void World::erode(int cycles){
   }
 
   //Update Fields
-  for(auto& index: map.indices){
+  for(auto& node: map.nodes){
 
-    for(int i = index.pos.x; i < index.pos.x + index.res.x; i++)
-    for(int j = index.pos.y; j < index.pos.y + index.res.y; j++){
+    for(int i = node.pos.x; i < node.pos.x + node.res.x; i++)
+    for(int j = node.pos.y; j < node.pos.y + node.res.y; j++){
 
-      index.get(ivec2(i, j))->discharge = (1.0-lrate)*index.get(ivec2(i, j))->discharge + lrate*index.get(ivec2(i, j))->discharge_track;//track[math::flatten(ivec2(i, j), World::dim)];
-      index.get(ivec2(i, j))->momentumx = (1.0-lrate)*index.get(ivec2(i, j))->momentumx + lrate*index.get(ivec2(i, j))->momentumx_track;//mx[math::flatten(ivec2(i, j), World::dim)];
-      index.get(ivec2(i, j))->momentumy = (1.0-lrate)*index.get(ivec2(i, j))->momentumy + lrate*index.get(ivec2(i, j))->momentumy_track;//my[math::flatten(ivec2(i, j), World::dim)];
+      node.get(ivec2(i, j))->discharge = (1.0-lrate)*node.get(ivec2(i, j))->discharge + lrate*node.get(ivec2(i, j))->discharge_track;//track[math::flatten(ivec2(i, j), World::dim)];
+      node.get(ivec2(i, j))->momentumx = (1.0-lrate)*node.get(ivec2(i, j))->momentumx + lrate*node.get(ivec2(i, j))->momentumx_track;//mx[math::flatten(ivec2(i, j), World::dim)];
+      node.get(ivec2(i, j))->momentumy = (1.0-lrate)*node.get(ivec2(i, j))->momentumy + lrate*node.get(ivec2(i, j))->momentumy_track;//my[math::flatten(ivec2(i, j), World::dim)];
 
     }
   }
@@ -190,7 +167,7 @@ void World::cascade(vec2 pos){
     if(World::map.oob(npos))
       continue;
 
-    sn[num++] = { npos, reduce::height(World::map, npos) };
+    sn[num++] = { npos, World::map.get(npos)->get(npos)->height };
 
   }
 
@@ -205,7 +182,7 @@ void World::cascade(vec2 pos){
     auto& npos = sn[i].pos;
 
     //Full Height-Different Between Positions!
-    float diff = (height(World::map, ipos) - height(World::map, npos));
+    float diff = World::map.get(ipos)->get(ipos)->height - World::map.get(npos)->get(npos)->height;
     if(diff == 0)   //No Height Difference
       continue;
 
@@ -219,12 +196,12 @@ void World::cascade(vec2 pos){
 
     //Cap by Maximum Transferrable Amount
     if(diff > 0){
-      World::map.get(ipos)->height -= transfer;
-      World::map.get(npos)->height += transfer;
+      World::map.get(ipos)->get(ipos)->height -= transfer;
+      World::map.get(npos)->get(npos)->height += transfer;
     }
     else{
-      World::map.get(ipos)->height += transfer;
-      World::map.get(npos)->height -= transfer;
+      World::map.get(ipos)->get(ipos)->height += transfer;
+      World::map.get(npos)->get(npos)->height -= transfer;
     }
 
   }
