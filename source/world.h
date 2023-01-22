@@ -30,8 +30,6 @@ public:
 
   // Main Update Methods
 
-  static void generate();                     // Initialize Heightmap
-
   static void erode(int cycles);              // Erosion Update Step
   static void cascade(vec2 pos);              // Perform Sediment Cascade
 

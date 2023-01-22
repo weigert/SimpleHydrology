@@ -125,7 +125,7 @@ const int size = mapsize*tilesize;
 const int area = maparea*tilearea;
 const ivec2 res = ivec2(size);
 
-const int lodsize = 1;
+const int lodsize = 2;
 const int lodarea = lodsize*lodsize;
 
 template<typename T>
@@ -284,9 +284,9 @@ struct map {
     for(auto& node: nodes){
 
       // Reset
-      for(int i = 0; i <  tilesize; i++)
-      for(int j = 0; j <  tilesize; j++)
-        node.get(node.pos + ivec2(i, j))->height = 0.0f;
+      for(int i = 0; i <  tilesize/lodsize; i++)
+      for(int j = 0; j <  tilesize/lodsize; j++)
+        node.get(node.pos + lodsize*ivec2(i, j))->height = 0.0f;
 
       // Add Layers of Noise
 
@@ -297,10 +297,10 @@ struct map {
 
         noise.SetFrequency(frequency);
 
-        for(int i = 0; i <  tilesize; i++)
-        for(int j = 0; j <  tilesize; j++){
-          vec2 p = (vec2(node.pos) + vec2(i, j))/vec2(quad::tileres);
-          node.get(node.pos + ivec2(i, j))->height += scale*noise.GetNoise(p.x, p.y, (float)(SEED%10000));
+        for(int i = 0; i <  tilesize/lodsize; i++)
+        for(int j = 0; j <  tilesize/lodsize; j++){
+          vec2 p = (vec2(node.pos) + float(lodsize)*vec2(i, j))/vec2(quad::tileres);
+          node.get(node.pos + lodsize*ivec2(i, j))->height += scale*noise.GetNoise(p.x, p.y, (float)(SEED%10000));
         }
 
         frequency *= 2;
