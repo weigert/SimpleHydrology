@@ -120,7 +120,7 @@ void World::erode(int cycles){
 
   }
 
-  float l = lrate;///quad::levelsize/quad::levelsize;
+  float l = lrate/float(quad::levelarea);
 
   //Update Fields
   for(auto& node: map.nodes){
@@ -133,6 +133,7 @@ void World::erode(int cycles){
       node.get(ivec2(i, j))->momentumy = (1.0-l)*node.get(ivec2(i, j))->momentumy + l*node.get(ivec2(i, j))->momentumy_track;//my[math::flatten(ivec2(i, j), World::dim)];
 
     }
+
   }
 
 }

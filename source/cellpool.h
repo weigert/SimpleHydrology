@@ -197,8 +197,8 @@ struct node {
 
 void indexnode(Vertexpool<Vertex>& vertexpool, quad::node& t){
 
-  for(int i = 0; i < (tileres.x)/levelsize-1; i++){
-  for(int j = 0; j < (tileres.y)/levelsize-1; j++){
+  for(int i = 0; i < tilesize/levelsize-1; i++){
+  for(int j = 0; j < tilesize/levelsize-1; j++){
 
     vertexpool.indices.push_back(math::flatten(ivec2(i, j), tileres/levelsize));
     vertexpool.indices.push_back(math::flatten(ivec2(i, j+1), tileres/levelsize));
@@ -221,7 +221,7 @@ void updatenode(Vertexpool<Vertex>& vertexpool, quad::node& t){
   for(int i = 0; i < tileres.x/levelsize; i++)
   for(int j = 0; j < tileres.y/levelsize; j++){
 
-    float hash = 0.0f;//hashrand(math::flatten(ivec2(i, j), t.res));
+    float hash = 0.0f;
     float p = t.discharge(t.pos + levelsize*ivec2(i, j));
 
     float height = quad::mapscale*t.height(t.pos + levelsize*ivec2(i, j));

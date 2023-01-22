@@ -95,7 +95,7 @@ int main( int argc, char* args[] ) {
     double t1 = 0.0f;
     glm::vec4 color = glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(0.2, 0.5, 1.0, 1.0), t1);
     return color;
-  }, quad::tileres));
+  }, quad::res));
 
   glm::mat4 mapmodel = glm::mat4(1.0f);
 
@@ -236,16 +236,16 @@ int main( int argc, char* args[] ) {
 
       if(viewmomentum)
       map.raw(image::make([&](int i){
-        double t1 = World::map.discharge(vec2(i/quad::tilesize, i%quad::tilesize));
+        double t1 = World::map.discharge(vec2(i/quad::size, i%quad::size));
         glm::vec4 color = glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(0.2, 0.5, 1.0, 1.0), t1);
         return color;
-      }, quad::tileres));
+      }, quad::res));
 
       else
       map.raw(image::make([&](int i){
 
-        auto node = world.map.get(math::unflatten(i, quad::tileres));
-        auto cell = node->get(math::unflatten(i, quad::tileres));
+        auto node = world.map.get(math::unflatten(i, quad::res));
+        auto cell = node->get(math::unflatten(i, quad::res));
 
         float mx = cell->momentumx;
         float my = cell->momentumy;
@@ -253,7 +253,7 @@ int main( int argc, char* args[] ) {
         glm::vec4 color = glm::vec4(abs(erf(mx)), 0, abs(erf(my)), 1.0);
 
         return color;
-      }, quad::tileres));
+      }, quad::res));
     }
 
   });
