@@ -147,7 +147,7 @@ void World::cascade(vec2 pos){
       continue;
 
     //The Amount of Excess Difference!
-    float excess = abs(diff) - quad::lodsize*maxdiff;
+    float excess = abs(diff) - maxdiff * quad::lodsize;
     if(excess <= 0)  //No Excess
       continue;
 

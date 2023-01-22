@@ -125,7 +125,7 @@ const int size = mapsize*tilesize;
 const int area = maparea*tilearea;
 const ivec2 res = ivec2(size);
 
-const int lodsize = 2;
+const int lodsize = 1;
 const int lodarea = lodsize*lodsize;
 
 template<typename T>
