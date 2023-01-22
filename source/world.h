@@ -53,15 +53,11 @@ float World::settling = 0.8f;
 */
 void World::erode(int cycles){
 
-  for(auto& node: map.nodes){
-
-    for(int i = node.pos.x; i < node.pos.x + quad::tileres.x; i++)
-    for(int j = node.pos.y; j < node.pos.y + quad::tileres.y; j++){
-      node.get(ivec2(i, j))->discharge_track = 0;
-      node.get(ivec2(i, j))->momentumx_track = 0;
-      node.get(ivec2(i, j))->momentumy_track = 0;
-    }
-
+  for(auto& node: map.nodes)
+  for(auto [cell, pos]: node.s){
+    cell.discharge_track = 0;
+    cell.momentumx_track = 0;
+    cell.momentumy_track = 0;
   }
 
   //Do a series of iterations!
@@ -77,20 +73,13 @@ void World::erode(int cycles){
 
   }
 
-  float l = lrate/float(quad::lodarea);
-
   //Update Fields
-  for(auto& node: map.nodes){
-
-    for(int i = node.pos.x; i < node.pos.x + quad::tileres.x; i++)
-    for(int j = node.pos.y; j < node.pos.y + quad::tileres.y; j++){
-
-      node.get(ivec2(i, j))->discharge = (1.0-l)*node.get(ivec2(i, j))->discharge + l*node.get(ivec2(i, j))->discharge_track;//track[math::flatten(ivec2(i, j), World::dim)];
-      node.get(ivec2(i, j))->momentumx = (1.0-l)*node.get(ivec2(i, j))->momentumx + l*node.get(ivec2(i, j))->momentumx_track;//mx[math::flatten(ivec2(i, j), World::dim)];
-      node.get(ivec2(i, j))->momentumy = (1.0-l)*node.get(ivec2(i, j))->momentumy + l*node.get(ivec2(i, j))->momentumy_track;//my[math::flatten(ivec2(i, j), World::dim)];
-
-    }
-
+  const float l = lrate/float(quad::lodarea);
+  for(auto& node: map.nodes)
+  for(auto [cell, pos]: node.s){
+    cell.discharge = (1.0f-l)*cell.discharge + l*cell.discharge_track;
+    cell.momentumx = (1.0f-l)*cell.momentumx + l*cell.momentumx_track;
+    cell.momentumy = (1.0f-l)*cell.momentumy + l*cell.momentumy_track;
   }
 
 }

@@ -13,17 +13,64 @@
 namespace mappool {
 
 // Raw Interleaved Data Buffer
-template<typename T>
-struct buf {
+template<typename T> struct buf;
+template<typename T> struct buf_iterator {
+  T* cur = NULL;
+  buf_iterator() noexcept : cur(NULL){};
+  buf_iterator(T* t) noexcept : cur(t){};
 
+  const T operator*() noexcept {
+      return *this->cur;
+  };
+
+  const buf_iterator<T>& operator++() noexcept {
+    if(cur != NULL) ++cur;
+    return *this;
+  };
+
+  const bool operator!=(const buf_iterator<T>& other) const noexcept {
+    return this->cur != other.cur;
+  };
+};
+template<typename T> struct buf {
   T* start = NULL;
   size_t size = 0;
 
+  const buf_iterator<T> begin() const noexcept { return buf_iterator<T>(start); }
+  const buf_iterator<T> end()   const noexcept { return buf_iterator<T>(start+size); }
 };
 
 // Raw Interleaved Data Buffer Slice
-template<typename T>
-struct slice {
+template<typename T> struct slice;
+template<typename T> struct sliceval {
+  T& start;             // Variable Reference
+  ivec2 pos = ivec2(0); // Slice Position
+};
+template<typename T> struct slice_iterator {
+  ivec2 pos = ivec2(0);
+  buf_iterator<T> cur = NULL;
+  const ivec2 res;
+
+  slice_iterator() noexcept : cur(NULL){};
+  slice_iterator(const buf_iterator<T>& t, const ivec2 r) noexcept : cur(t), res(r){};
+
+  const sliceval<T> operator*() noexcept {
+      return {*(cur.cur), pos};
+  };
+
+  const slice_iterator<T>& operator++() noexcept {
+    ++cur;
+    if((pos.y + 1)%res.x == 0)
+      pos.x = (pos.x + 1);
+    pos.y = (pos.y + 1)%res.x;
+    return *this;
+  };
+
+  const bool operator!=(const slice_iterator<T> &other) const noexcept {
+    return this->cur != other.cur;
+  };
+};
+template<typename T> struct slice {
 
   mappool::buf<T> root;
   ivec2 res = ivec2(0);
@@ -45,6 +92,9 @@ struct slice {
     if(oob(p)) return NULL;
     return root.start + math::flatten(p, res);
   }
+
+  slice_iterator<T> begin() const noexcept { return slice_iterator<T>(root.begin(), res); }
+  slice_iterator<T> end()   const noexcept { return slice_iterator<T>(root.end(), res); }
 
 };
 
@@ -197,19 +247,19 @@ struct node {
 
 void indexnode(Vertexpool<Vertex>& vertexpool, quad::node& t){
 
-  for(int i = 0; i < tilesize/lodsize-1; i++){
-  for(int j = 0; j < tilesize/lodsize-1; j++){
+  // Iterate over the Node's Slice
+  for(const auto& [cell, pos]: t.s){
+    if(pos.x == tilesize/lodsize - 1) continue;
+    if(pos.y == tilesize/lodsize - 1) continue;
+    vertexpool.indices.push_back(math::flatten(pos + ivec2(0, 0), tileres/lodsize));
+    vertexpool.indices.push_back(math::flatten(pos + ivec2(0, 1), tileres/lodsize));
+    vertexpool.indices.push_back(math::flatten(pos + ivec2(1, 0), tileres/lodsize));
+    vertexpool.indices.push_back(math::flatten(pos + ivec2(1, 0), tileres/lodsize));
+    vertexpool.indices.push_back(math::flatten(pos + ivec2(0, 1), tileres/lodsize));
+    vertexpool.indices.push_back(math::flatten(pos + ivec2(1, 1), tileres/lodsize));
+  }
 
-    vertexpool.indices.push_back(math::flatten(ivec2(i, j), tileres/lodsize));
-    vertexpool.indices.push_back(math::flatten(ivec2(i, j+1), tileres/lodsize));
-    vertexpool.indices.push_back(math::flatten(ivec2(i+1, j), tileres/lodsize));
-
-    vertexpool.indices.push_back(math::flatten(ivec2(i+1, j), tileres/lodsize));
-    vertexpool.indices.push_back(math::flatten(ivec2(i, j+1), tileres/lodsize));
-    vertexpool.indices.push_back(math::flatten(ivec2(i+1, j+1), tileres/lodsize));
-
-  }}
-
+  // Update the Vertexpool Properties
   vertexpool.resize(t.vertex, vertexpool.indices.size());
   vertexpool.index();
   vertexpool.update();
@@ -218,25 +268,21 @@ void indexnode(Vertexpool<Vertex>& vertexpool, quad::node& t){
 
 void updatenode(Vertexpool<Vertex>& vertexpool, quad::node& t){
 
-  for(int i = 0; i < tilesize/lodsize; i++)
-  for(int j = 0; j < tilesize/lodsize; j++){
+  for(auto [cell, pos]: t.s){
 
-    float hash = 0.0f;
-    float p = t.discharge(t.pos + lodsize*ivec2(i, j));
+    float height = quad::mapscale*t.height(t.pos + lodsize*pos);
 
-    float height = quad::mapscale*t.height(t.pos + lodsize*ivec2(i, j));
     glm::vec3 color = flatColor;
 
-    glm::vec3 normal = t.normal(t.pos + lodsize*ivec2(i, j));
+    glm::vec3 normal = t.normal(t.pos + lodsize*pos);
     if(normal.y < steepness)
       color = steepColor;
 
-    color = glm::mix(color, waterColor, p);
+    float discharge = t.discharge(t.pos + lodsize*pos);
+    color = glm::mix(color, waterColor, discharge);
 
-    color = glm::mix(color, vec3(0), 0.3*hash*(1.0f-p));
-
-    vertexpool.fill(t.vertex, math::flatten(ivec2(i, j), tileres/lodsize),
-      glm::vec3(t.pos.x + lodsize*i, height, t.pos.y + lodsize*j),
+    vertexpool.fill(t.vertex, math::flatten(pos, tileres/lodsize),
+      glm::vec3(t.pos.x + lodsize*pos.x, height, t.pos.y + lodsize*pos.y),
       normal,
       vec4(color, 1.0f)
     );
@@ -283,10 +329,8 @@ struct map {
 
     for(auto& node: nodes){
 
-      // Reset
-      for(int i = 0; i <  tilesize/lodsize; i++)
-      for(int j = 0; j <  tilesize/lodsize; j++)
-        node.get(node.pos + lodsize*ivec2(i, j))->height = 0.0f;
+      for(auto [cell, pos]: node.s)
+        cell.height = 0.0f;
 
       // Add Layers of Noise
 
@@ -297,10 +341,11 @@ struct map {
 
         noise.SetFrequency(frequency);
 
-        for(int i = 0; i <  tilesize/lodsize; i++)
-        for(int j = 0; j <  tilesize/lodsize; j++){
-          vec2 p = (vec2(node.pos) + float(lodsize)*vec2(i, j))/vec2(quad::tileres);
-          node.get(node.pos + lodsize*ivec2(i, j))->height += scale*noise.GetNoise(p.x, p.y, (float)(SEED%10000));
+        for(auto [cell, pos]: node.s){
+
+          vec2 p = vec2(node.pos+lodsize*pos)/vec2(quad::tileres);
+          cell.height += scale*noise.GetNoise(p.x, p.y, (float)(SEED%10000));
+
         }
 
         frequency *= 2;
