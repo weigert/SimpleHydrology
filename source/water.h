@@ -91,14 +91,17 @@ bool Drop::descend(){
   // Gravity Force
 
   if(cell->height > 0.1){
+    
     speed += quad::lodsize*gravity*vec2(n.x, n.z)/volume;
+
+    vec2 fspeed = vec2(cell->momentumx, cell->momentumy);
+    if(length(fspeed) > 0 && length(speed) > 0)
+      speed += quad::lodsize*momentumTransfer*dot(normalize(fspeed), normalize(speed))/(volume + cell->discharge)*fspeed;
+
   }
 
   // Momentum Transfer Force
 
-  vec2 fspeed = vec2(cell->momentumx, cell->momentumy);
-  if(length(fspeed) > 0 && length(speed) > 0)
-    speed += quad::lodsize*momentumTransfer*dot(normalize(fspeed), normalize(speed))/(volume + cell->discharge)*fspeed;
 
   // Dynamic Time-Step, Update
 

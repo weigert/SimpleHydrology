@@ -168,14 +168,14 @@ const int tilesize = 512;
 const int tilearea = tilesize*tilesize;
 const ivec2 tileres = ivec2(tilesize);
 
-const int mapsize = 4;
+const int mapsize = 3;
 const int maparea = mapsize*mapsize;
 
 const int size = mapsize*tilesize;
 const int area = maparea*tilearea;
 const ivec2 res = ivec2(size);
 
-const int lodsize = 2;
+const int lodsize = 1;
 const int lodarea = lodsize*lodsize;
 
 template<typename T>
@@ -365,9 +365,17 @@ struct map {
 
     for(auto& node: nodes)
     for(auto [cell, pos]: node.s){
+
+      /*
+      // Gaussian
       vec2 cp = node.pos + lodsize*pos - res/2;
       float d = exp(-dot(cp, cp)/(0.07*size*size));
-      cell.height = d*(0.0f+(cell.height - min)/(max - min));
+      */
+      vec2 cp = node.pos + lodsize*pos - res/2;
+      float cd = dot(cp, cp)/(0.07*size*size);
+      float d = 0.5f*(1.0f+erf(1.0*(1.0f-cd)));
+      cell.height = d*((cell.height - min)/(max - min));
+
     }
 
   }

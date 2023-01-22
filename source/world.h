@@ -70,7 +70,7 @@ void World::erode(int cycles){
 
     if(node.height(newpos) < 0.1)
       continue;
-  
+
     Drop drop(newpos);
 
     while(drop.descend());
@@ -134,12 +134,18 @@ void World::cascade(vec2 pos){
     auto& npos = sn[i].pos;
 
     //Full Height-Different Between Positions!
-    float diff = World::map.get(ipos)->get(ipos)->height - World::map.get(npos)->get(npos)->height;
+    float diff = World::map.get(ipos)->get(ipos)->height - sn[i].h;
     if(diff == 0)   //No Height Difference
       continue;
 
-    //The Amount of Excess Difference!
-    float excess = abs(diff) - maxdiff * quad::lodsize;
+      //The Amount of Excess Difference!
+    float excess = 0.0f;
+    if(sn[i].h > 0.1){
+      excess = abs(diff) - maxdiff * quad::lodsize;
+    } else {
+      excess = abs(diff);
+    }
+
     if(excess <= 0)  //No Excess
       continue;
 
