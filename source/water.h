@@ -107,9 +107,9 @@ bool Drop::descend(){
 
   // Update Discharge, Momentum Tracking Maps
 
-  cell->discharge_track += volume/float(quad::lodsize);
-  cell->momentumx_track += volume*speed.x/float(quad::lodsize);
-  cell->momentumy_track += volume*speed.y/float(quad::lodsize);
+  cell->discharge_track += volume;
+  cell->momentumx_track += volume*speed.x;
+  cell->momentumy_track += volume*speed.y;
 
   //Out-Of-Bounds
   float h2;
@@ -119,9 +119,9 @@ bool Drop::descend(){
     h2 = node->get(pos)->height;
 
   //Mass-Transfer (in MASS)
-  float c_eq = (1.0f+entrainment*node->discharge(ipos))*quad::lodsize*(cell->height-h2);
+  float c_eq = (1.0f+entrainment*node->discharge(ipos))*(cell->height-h2);
   if(c_eq < 0) c_eq = 0;
-  float cdiff = (c_eq - sediment)/quad::lodarea;
+  float cdiff = (c_eq - sediment);
 
   sediment += effD*cdiff;
   cell->height -= effD*cdiff;

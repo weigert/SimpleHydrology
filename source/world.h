@@ -74,12 +74,11 @@ void World::erode(int cycles){
   }
 
   //Update Fields
-  const float l = lrate/float(quad::lodarea);
   for(auto& node: map.nodes)
   for(auto [cell, pos]: node.s){
-    cell.discharge = (1.0f-l)*cell.discharge + l*cell.discharge_track;
-    cell.momentumx = (1.0f-l)*cell.momentumx + l*cell.momentumx_track;
-    cell.momentumy = (1.0f-l)*cell.momentumy + l*cell.momentumy_track;
+    cell.discharge = (1.0f-lrate)*cell.discharge + lrate*cell.discharge_track;
+    cell.momentumx = (1.0f-lrate)*cell.momentumx + lrate*cell.momentumx_track;
+    cell.momentumy = (1.0f-lrate)*cell.momentumy + lrate*cell.momentumy_track;
   }
 
 }
