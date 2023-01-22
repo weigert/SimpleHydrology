@@ -67,7 +67,7 @@ bool Drop::descend(){
   if(cell == NULL)
     return false;
 
-  const glm::vec3 n = node->normal(ipos);
+  const glm::vec3 n = World::map.normal(ipos);
 
   // Termination Checks
 
@@ -119,7 +119,7 @@ bool Drop::descend(){
     h2 = node->get(pos)->height;
 
   //Mass-Transfer (in MASS)
-  float c_eq = (1.0f+entrainment*node->discharge(ipos))*(cell->height-h2);
+  float c_eq = (1.0f+entrainment*node->discharge(ipos))*quad::lodsize*(cell->height-h2);
   if(c_eq < 0) c_eq = 0;
   float cdiff = (c_eq - sediment)/quad::lodarea;
 

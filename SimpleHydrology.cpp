@@ -19,11 +19,6 @@ int main( int argc, char* args[] ) {
 
   World world;
 
-  cellpool.reserve(quad::area);
-  vertexpool.reserve(quad::tilearea, quad::maparea);
-
-  World::map.init(vertexpool, cellpool);
-
   if(argc >= 2){
     World::SEED = std::stoi(args[1]);
     srand(std::stoi(args[1]));
@@ -33,7 +28,12 @@ int main( int argc, char* args[] ) {
     srand(World::SEED);
   }
 
-  world.generate();
+
+
+  cellpool.reserve(quad::area);
+  vertexpool.reserve(quad::tilearea, quad::maparea);
+
+  World::map.init(vertexpool, cellpool, World::SEED);
 
   //Vertexpool for Drawing Surface
 

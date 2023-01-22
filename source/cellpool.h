@@ -114,11 +114,11 @@ namespace quad {
 
 const int mapscale = 80;
 
-const int tilesize = 256;
+const int tilesize = 512;
 const int tilearea = tilesize*tilesize;
 const ivec2 tileres = ivec2(tilesize);
 
-const int mapsize = 2;
+const int mapsize = 1;
 const int maparea = mapsize*mapsize;
 
 const int size = mapsize*tilesize;
@@ -169,7 +169,7 @@ struct cell {
 
 struct node {
 
-  ivec2 pos = ivec2(0); // Absolute World Position
+  ivec2 pos = ivec2(0);   // Absolute World Position
   uint* vertex = NULL;    // Vertexpool Rendering Pointer
   mappool::slice<cell> s; // Raw Interleaved Data Slices
 
@@ -249,7 +249,9 @@ struct map {
 
   node nodes[maparea];
 
-  void init(Vertexpool<Vertex>& vertexpool, mappool::pool<cell>& cellpool){
+  void init(Vertexpool<Vertex>& vertexpool, mappool::pool<cell>& cellpool, int SEED){
+
+    // Generate the Node Array
 
     for(int i = 0; i < mapsize; i++)
     for(int j = 0; j < mapsize; j++){
@@ -263,6 +265,48 @@ struct map {
       };
 
       indexnode(vertexpool, nodes[ind]);
+
+    }
+
+    // Fill the Node Array
+
+    std::cout<<"Generating New World"<<std::endl;
+    std::cout<<"Seed: "<<SEED<<std::endl;
+
+    std::cout<<"... generating height ..."<<std::endl;
+
+    static FastNoiseLite noise; //Noise System
+    noise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
+    noise.SetFractalType(FastNoiseLite::FractalType_FBm);
+
+    float min, max = 0.0;
+
+    for(auto& node: nodes){
+
+      // Reset
+      for(int i = 0; i <  tilesize; i++)
+      for(int j = 0; j <  tilesize; j++)
+        node.get(node.pos + ivec2(i, j))->height = 0.0f;
+
+      // Add Layers of Noise
+
+      float frequency = 1.0f;
+      float scale = 0.6f;
+
+      for(size_t o = 0; o < 8; o++){
+
+        noise.SetFrequency(frequency);
+
+        for(int i = 0; i <  tilesize; i++)
+        for(int j = 0; j <  tilesize; j++){
+          vec2 p = (vec2(node.pos) + vec2(i, j))/vec2(quad::tileres);
+          node.get(node.pos + ivec2(i, j))->height += scale*noise.GetNoise(p.x, p.y, (float)(SEED%10000));
+        }
+
+        frequency *= 2;
+        scale *= 0.6;
+
+      }
 
     }
 

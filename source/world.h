@@ -49,47 +49,6 @@ float World::settling = 0.8f;
 #include "water.h"
 
 /*
-================================================================================
-                        World Method Implementations
-================================================================================
-*/
-
-void World::generate(){
-
-  std::cout<<"Generating New World"<<std::endl;
-  std::cout<<"Seed: "<<SEED<<std::endl;
-
-  std::cout<<"... generating height ..."<<std::endl;
-
-  static FastNoiseLite noise; //Noise System
-  float octaves = 8.0f;       //
-  float lacunarity = 2.0f;    //
-  float gain = 0.6f;          //
-  float frequency = 1.0f;     //
-
-  noise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
-  noise.SetFractalType(FastNoiseLite::FractalType_FBm);
-  noise.SetFractalOctaves(octaves);
-  noise.SetFractalLacunarity(lacunarity);
-  noise.SetFractalGain(gain);
-  noise.SetFrequency(frequency);
-
-  float min, max = 0.0;
-
-  for(auto& node: map.nodes){
-
-      // Highest Res
-      for(int i = 0; i < quad::tileres.x; i++)
-      for(int j = 0; j < quad::tileres.y; j++){
-        vec2 p = (vec2(node.pos) + vec2(i, j))/vec2(quad::tileres)/2.0f;
-        node.get(node.pos + ivec2(i, j))->height = noise.GetNoise(p.x, p.y, (float)(SEED%10000));
-      }
-
-  }
-
-}
-
-/*
 ===================================================
           HYDRAULIC EROSION FUNCTIONS
 ===================================================
