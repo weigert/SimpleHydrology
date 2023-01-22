@@ -81,7 +81,7 @@ void World::generate(){
       // Highest Res
       for(int i = 0; i < quad::tileres.x; i++)
       for(int j = 0; j < quad::tileres.y; j++){
-        vec2 p = (vec2(node.pos) + vec2(i, j))/vec2(quad::tileres);
+        vec2 p = (vec2(node.pos) + vec2(i, j))/vec2(quad::tileres)/2.0f;
         node.get(node.pos + ivec2(i, j))->height = noise.GetNoise(p.x, p.y, (float)(SEED%10000));
       }
 
@@ -120,7 +120,7 @@ void World::erode(int cycles){
 
   }
 
-  float l = lrate/float(quad::levelarea);
+  float l = lrate/float(quad::lodarea);
 
   //Update Fields
   for(auto& node: map.nodes){
@@ -165,7 +165,7 @@ void World::cascade(vec2 pos){
 
   for(auto& nn: n){
 
-    ivec2 npos = ipos + quad::levelsize*nn;
+    ivec2 npos = ipos + quad::lodsize*nn;
 
     if(World::map.oob(npos))
       continue;
@@ -190,7 +190,7 @@ void World::cascade(vec2 pos){
       continue;
 
     //The Amount of Excess Difference!
-    float excess = abs(diff) - quad::levelsize*maxdiff;
+    float excess = abs(diff) - quad::lodsize*maxdiff;
     if(excess <= 0)  //No Excess
       continue;
 
