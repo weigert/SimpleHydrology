@@ -168,14 +168,14 @@ const int tilesize = 512;
 const int tilearea = tilesize*tilesize;
 const ivec2 tileres = ivec2(tilesize);
 
-const int mapsize = 1;
+const int mapsize = 4;
 const int maparea = mapsize*mapsize;
 
 const int size = mapsize*tilesize;
 const int area = maparea*tilearea;
 const ivec2 res = ivec2(size);
 
-const int lodsize = 1;
+const int lodsize = 2;
 const int lodarea = lodsize*lodsize;
 
 template<typename T>
@@ -325,7 +325,6 @@ struct map {
     noise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
     noise.SetFractalType(FastNoiseLite::FractalType_FBm);
 
-    float min, max = 0.0;
 
     for(auto& node: nodes){
 
@@ -353,6 +352,22 @@ struct map {
 
       }
 
+    }
+
+    float min = 0.0f;
+    float max = 0.0f;
+
+    for(auto& node: nodes)
+    for(auto [cell, pos]: node.s){
+      min = (min < cell.height)?min:cell.height;
+      max = (max > cell.height)?max:cell.height;
+    }
+
+    for(auto& node: nodes)
+    for(auto [cell, pos]: node.s){
+      vec2 cp = node.pos + lodsize*pos - res/2;
+      float d = exp(-dot(cp, cp)/(0.07*size*size));
+      cell.height = d*(0.0f+(cell.height - min)/(max - min));
     }
 
   }

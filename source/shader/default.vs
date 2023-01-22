@@ -65,7 +65,15 @@ return vec4(lightCol*lightStrength*((1.0f-0.9*shade())*(diffuse + spec) + ambien
 }
 
 void main(void) {
-	ex_Shadow = dbvp * vec4(in_Position, 1.0f);
-	gl_Position = vp * vec4(in_Position, 1.0f);
-	ex_Color = vec4((phong()*in_Color).xyz, 1.0f);
+
+  vec3 ex_Position = in_Position;
+  ex_Color = vec4((phong()*in_Color).xyz, 1.0f);
+
+  if(ex_Position.y < 8){
+    ex_Position.y = 8;
+    ex_Color = vec4(0.17, 0.40, 0.44,1);
+  }
+
+	ex_Shadow = dbvp * vec4(ex_Position, 1.0f);
+	gl_Position = vp * vec4(ex_Position, 1.0f);
 }

@@ -90,7 +90,9 @@ bool Drop::descend(){
 
   // Gravity Force
 
-  speed += quad::lodsize*gravity*vec2(n.x, n.z)/volume;
+  if(cell->height > 0.1){
+    speed += quad::lodsize*gravity*vec2(n.x, n.z)/volume;
+  }
 
   // Momentum Transfer Force
 
@@ -113,10 +115,10 @@ bool Drop::descend(){
 
   //Out-Of-Bounds
   float h2;
-  if(node->oob(pos))
-    h2 = cell->height-0.003;
+  if(World::map.oob(pos))
+    h2 = cell->height-0.002;
   else
-    h2 = node->get(pos)->height;
+    h2 = World::map.height(pos);
 
   //Mass-Transfer (in MASS)
   float c_eq = (1.0f+entrainment*node->discharge(ipos))*(cell->height-h2);
@@ -135,6 +137,13 @@ bool Drop::descend(){
     volume = 0.0;
     return false;
   }
+
+  /*
+  if(World.height(pos) < 0.1){
+    volume = 0.0;
+    return false;
+  }
+  */
 
   World::cascade(pos);
 

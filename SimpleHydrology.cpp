@@ -236,8 +236,13 @@ int main( int argc, char* args[] ) {
 
       if(viewmomentum)
       map.raw(image::make([&](int i){
-        double t1 = World::map.discharge(vec2(i/quad::size, i%quad::size));
-        glm::vec4 color = glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(0.2, 0.5, 1.0, 1.0), t1);
+
+        vec2 p = math::unflatten(i, quad::res);
+        double d = World::map.discharge(p);
+        if(World::map.height(p) < 0.1)
+          d = 0.5;
+
+        glm::vec4 color = glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(0.2, 0.5, 1.0, 1.0), d);
         return color;
       }, quad::res));
 
@@ -247,11 +252,13 @@ int main( int argc, char* args[] ) {
         auto node = world.map.get(math::unflatten(i, quad::res));
         auto cell = node->get(math::unflatten(i, quad::res));
 
+        if(cell->height < 0.1)
+          return glm::vec4(0,0,0,1);
+
         float mx = cell->momentumx;
         float my = cell->momentumy;
 
         glm::vec4 color = glm::vec4(abs(erf(mx)), 0, abs(erf(my)), 1.0);
-
         return color;
       }, quad::res));
     }

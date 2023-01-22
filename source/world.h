@@ -67,6 +67,10 @@ void World::erode(int cycles){
     //Spawn New Particle
 
     glm::vec2 newpos = node.pos + ivec2(rand()%quad::tileres.x, rand()%quad::tileres.y);
+
+    if(node.height(newpos) < 0.1)
+      continue;
+  
     Drop drop(newpos);
 
     while(drop.descend());
