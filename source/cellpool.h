@@ -168,7 +168,7 @@ const int tilesize = 512;
 const int tilearea = tilesize*tilesize;
 const ivec2 tileres = ivec2(tilesize);
 
-const int mapsize = 3;
+const int mapsize = 1;
 const int maparea = mapsize*mapsize;
 
 const int size = mapsize*tilesize;
@@ -372,8 +372,8 @@ struct map {
       float d = exp(-dot(cp, cp)/(0.07*size*size));
       */
       vec2 cp = node.pos + lodsize*pos - res/2;
-      float cd = dot(cp, cp)/(0.07*size*size);
-      float d = 0.5f*(1.0f+erf(1.0*(1.0f-cd)));
+      float cd = sqrt(dot(cp, cp)/(0.07*size*size));
+      float d = 1.0;//0.5f*(1.0f+erf(10.0*(1.0f-cd)));
       cell.height = d*((cell.height - min)/(max - min));
 
     }
