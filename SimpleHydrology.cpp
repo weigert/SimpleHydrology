@@ -61,6 +61,7 @@ int main( int argc, char* args[] ) {
   cam::moverate = 10.0f;
   cam::look = glm::vec3(quad::size/2, 0, quad::size/2);
   cam::roty = 45.0f;
+  cam::rot = 180.0f;
   cam::init(3, cam::ORTHO);
   cam::update();
 
@@ -68,7 +69,7 @@ int main( int argc, char* args[] ) {
   Shader shader({"source/shader/default.vs", "source/shader/default.fs"}, {"in_Position", "in_Normal", "in_Color"});
   Shader depth({"source/shader/depth.vs", "source/shader/depth.fs"}, {"in_Position"});
   Shader effect({"source/shader/effect.vs", "source/shader/effect.fs"}, {"in_Quad", "in_Tex"});
-  Shader billboard({"source/shader/billboard.vs", "source/shader/billboard.fs"}, {"in_Quad", "in_Tex"});
+  Shader mapshader({"source/shader/map.vs", "source/shader/map.fs"}, {"in_Quad", "in_Tex"});
   Shader sprite({"source/shader/sprite.vs", "source/shader/sprite.fs"}, {"in_Quad", "in_Tex", "in_Model"});
   Shader spritedepth({"source/shader/spritedepth.vs", "source/shader/spritedepth.fs"}, {"in_Quad", "in_Tex", "in_Model"});
   Shader heightshader({"source/shader/height.vs", "source/shader/height.fs"}, {"in_Position"});
@@ -90,21 +91,18 @@ int main( int argc, char* args[] ) {
   Billboard shadow(8000, 8000);               //800x800, depth only
   Square2D flat;
 
-  //Texture for Hydrology Map Visualization
-  Texture map(image::make([&](int i){
-    double t1 = 0.0f;
-    glm::vec4 color = glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(0.2, 0.5, 1.0, 1.0), t1);
-    return color;
+  //Texture for Hydrological Map Visualization
+
+  Texture momentumMap(image::make([&](const ivec2 p){
+    return vec4(0,0,0,0);
+  }, quad::res));
+
+  Texture dischargeMap(image::make([&](const ivec2 p){
+    return vec4(0,0,0,0);
   }, quad::res));
 
   glm::mat4 mapmodel = glm::mat4(1.0f);
-
-
-//  mapmodel = glm::translate(mapmodel, glm::vec3(-1.0+0.3*(float)HEIGHT/(float)WIDTH, -1.0+0.3, 0.0));
   mapmodel = glm::scale(mapmodel, glm::vec3(1,1,1)*glm::vec3((float)HEIGHT/(float)WIDTH, 1.0f, 1.0f));
-  //model = glm::translate(glm::mat4(1.0), glm::vec3(2.0*pos.x-1.0+scale.x, 2.0*pos.y-1.0+scale.y, 0.0));
-  //model = glm::scale(model, glm::vec3(scale.x, scale.y, 1.0));
-
 
   //Visualization Hooks
   Tiny::event.handler = [&](){
@@ -156,6 +154,8 @@ int main( int argc, char* args[] ) {
     shader.uniform("vp", cam::vp);
     shader.uniform("dbvp", dbvp);
     shader.texture("shadowMap", shadow.depth);
+    shader.texture("dischargeMap", dischargeMap);
+
     shader.uniform("lightCol", lightCol);
     shader.uniform("lightPos", lightPos);
     shader.uniform("lookDir", cam::pos);
@@ -197,9 +197,11 @@ int main( int argc, char* args[] ) {
 
     if(viewmap){
 
-      billboard.use();
-      billboard.texture("imageTexture", map);
-      billboard.uniform("model", mapmodel);
+      mapshader.use();
+      mapshader.texture("momentumMap", momentumMap);
+      mapshader.texture("dischargeMap", dischargeMap);
+      mapshader.uniform("model", mapmodel);
+      mapshader.uniform("view", viewmomentum);
       flat.render();
 
     }
@@ -222,6 +224,7 @@ int main( int argc, char* args[] ) {
     cout<<n++<<endl;
 
     //Update the Tree Particle System
+
     treemodels.clear();
     for(auto& t: Vegetation::plants){
       glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(t.pos.x, t.size + quad::mapscale*world.map.get(t.pos)->get(t.pos)->height, t.pos.y));
@@ -231,37 +234,22 @@ int main( int argc, char* args[] ) {
     modelbuf.fill(treemodels);
     treeparticle.SIZE = treemodels.size();    //  cout<<world.trees.size()<<endl;
 
-    //Redraw the Discharge and Momentum Maps
-    if(viewmap){
+    // Update Maps
 
-      if(viewmomentum)
-      map.raw(image::make([&](int i){
+    dischargeMap.raw(image::make([&](const ivec2 p){
+      double d = World::map.discharge(p);
+      if(World::map.height(p) < 0.1)
+        d = 1.0;
+      return vec4(waterColor, d);
+    }, quad::res));
 
-        vec2 p = math::unflatten(i, quad::res);
-        double d = World::map.discharge(p);
-        if(World::map.height(p) < 0.1)
-          d = 0.5;
-
-        glm::vec4 color = glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(0.2, 0.5, 1.0, 1.0), d);
-        return color;
-      }, quad::res));
-
-      else
-      map.raw(image::make([&](int i){
-
-        auto node = world.map.get(math::unflatten(i, quad::res));
-        auto cell = node->get(math::unflatten(i, quad::res));
-
-        if(cell->height < 0.1)
-          return glm::vec4(0,0,0,1);
-
-        float mx = cell->momentumx;
-        float my = cell->momentumy;
-
-        glm::vec4 color = glm::vec4(abs(erf(mx)), 0, abs(erf(my)), 1.0);
-        return color;
-      }, quad::res));
-    }
+    momentumMap.raw(image::make([&](const ivec2 p){
+      auto node = world.map.get(p);
+      auto cell = node->get(p);
+      float mx = cell->momentumx;
+      float my = cell->momentumy;
+      return glm::vec4(0.5f*(1.0f+erf(mx)), 0.5f*(1.0f+erf(my)), 0.5f, 1.0);
+    }, quad::res));
 
   });
 

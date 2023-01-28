@@ -273,20 +273,11 @@ void updatenode(Vertexpool<Vertex>& vertexpool, quad::node& t){
   for(auto [cell, pos]: t.s){
 
     float height = quad::mapscale*t.height(t.pos + lodsize*pos);
-
-    glm::vec3 color = flatColor;
-
     glm::vec3 normal = t.normal(t.pos + lodsize*pos);
-    if(normal.y < steepness)
-      color = steepColor;
-
-    float discharge = t.discharge(t.pos + lodsize*pos);
-    color = glm::mix(color, waterColor, discharge);
 
     vertexpool.fill(t.vertex, math::flatten(pos, tileres/lodsize),
       glm::vec3(t.pos.x + lodsize*pos.x, height, t.pos.y + lodsize*pos.y),
-      normal,
-      vec4(color, 1.0f)
+      normal
     );
 
   }
