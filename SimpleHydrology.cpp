@@ -213,7 +213,7 @@ int main( int argc, char* args[] ) {
       return;
 
     world.erode(quad::tilesize); //Execute Erosion Cycles
-  //  Vegetation::grow();     //Grow Trees
+    Vegetation::grow();     //Grow Trees
 
     for(auto& node: world.map.nodes){
       updatenode(vertexpool, node);

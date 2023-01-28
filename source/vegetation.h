@@ -27,7 +27,7 @@ struct Plant {
 
   // Update Functions
 
-  void root(float* density, glm::ivec2 dim, float factor);
+  void root(float factor);
   void grow();
   static bool spawn(vec2 pos);
   bool die();
@@ -44,13 +44,11 @@ float Plant::maxDischarge = 0.2f;
 struct Vegetation {
 
   static std::vector<Plant> plants;
-  static float density[quad::tilearea];     //Density for Plants
   static bool grow();
 
 };
 
 std::vector<Plant> Vegetation::plants;
-float Vegetation::density[quad::tilearea]{0.0f};
 
 /*
 ================================================================================
@@ -82,57 +80,53 @@ bool Plant::spawn( vec2 pos ){
 
 }
 
-void Plant::root(float* density, glm::ivec2 dim, float f){
+void Plant::root(float f){
 
-  int ind = math::flatten(pos, dim);
+  quad::cell* c;
 
-  //Can always do this one
-  density[ind]       += f*1.0;
+  c = World::map.getCell( pos + vec2( 0, 0) );
+  if(c != NULL) c->rootdensity += f*1.0f;
 
-  if(pos.x > 0){
-    //
-    density[ind - quad::tilesize] += f*0.6;      //(-1, 0)
+  c = World::map.getCell( pos + vec2( 1, 0) );
+  if(c != NULL) c->rootdensity += f*0.6f;
 
-    if(pos.y > 0)
-      density[ind - quad::tilesize-1] += f*0.4;    //(-1, -1)
+  c = World::map.getCell( pos + vec2(-1, 0) );
+  if(c != NULL) c->rootdensity += f*0.6f;
 
-    if(pos.y < quad::tilesize-1)
-      density[ind - quad::tilesize+1] += f*0.4;    //(-1, 1)
-  }
+  c = World::map.getCell( pos + vec2( 0, 1) );
+  if(c != NULL) c->rootdensity += f*0.6f;
 
-  if(pos.x < quad::tilesize-1){
-    //
-    density[ind + quad::tilesize] += f*0.6;    //(1, 0)
+  c = World::map.getCell( pos + vec2( 0,-1) );
+  if(c != NULL) c->rootdensity += f*0.6f;
 
-    if(pos.y > 0)
-      density[ind + quad::tilesize-1] += f*0.4;    //(1, -1)
+  c = World::map.getCell( pos + vec2(-1,-1) );
+  if(c != NULL) c->rootdensity += f*0.4f;
 
-    if(pos.y < quad::tilesize-1)
-      density[ind + quad::tilesize+1] += f*0.4;    //(1, 1)
-  }
+  c = World::map.getCell( pos + vec2( 1,-1) );
+  if(c != NULL) c->rootdensity += f*0.4f;
 
-  if(pos.y > 0)
-    density[ind - 1]   += f*0.6;    //(0, -1)
+  c = World::map.getCell( pos + vec2(-1, 1) );
+  if(c != NULL) c->rootdensity += f*0.4f;
 
-  if(pos.y < quad::tilesize-1)
-    density[ind + 1]   += f*0.6;    //(0, 1)
+  c = World::map.getCell( pos + vec2( 1, 1) );
+  if(c != NULL) c->rootdensity += f*0.4f;
+
 }
 
 // Vegetation Specific Methods
 
 bool Vegetation::grow(){
 
-  /*
   //Random Position
   {
 
-    int x = rand()%(World::dim.x);
-    int y = rand()%(World::dim.y);
+    int x = rand()%(quad::res.x);
+    int y = rand()%(quad::res.y);
 
     if( Plant::spawn(vec2(x, y)) ){
 
       plants.emplace_back(vec2(x, y));
-      plants.back().root(density, World::dim, 1.0);
+      plants.back().root(1.0);
 
     }
 
@@ -150,7 +144,7 @@ bool Vegetation::grow(){
 
     if( plants[i].die() ){
 
-       plants[i].root(density, World::dim, -1.0);
+       plants[i].root(-1.0);
        plants.erase(plants.begin()+i);
        i--;
        continue;
@@ -164,30 +158,26 @@ bool Vegetation::grow(){
 
     //Find New Position
     glm::vec2 npos = plants[i].pos + glm::vec2(rand()%9-4, rand()%9-4);
-    int nind = math::flatten(npos, World::dim);
 
     //Check for Out-Of-Bounds
     if(World::map.oob(npos))
       continue;
 
-    if(reduce::discharge(World::map, npos) >= Plant::maxDischarge)
+    if(World::map.discharge(npos) >= Plant::maxDischarge)
       continue;
 
-    if((float)(rand()%1000)/1000.0 <= density[nind])
+    if((float)(rand()%1000)/1000.0 <= World::map.getCell(npos)->rootdensity)
       continue;
 
-    glm::vec3 n = reduce::normal(World::map, npos);
+    glm::vec3 n = World::map.normal(npos);
 
     if( n.y <= Plant::maxSteep )
       continue;
 
     plants.emplace_back(npos);
-    plants.back().root(density, World::dim, 1.0);
+    plants.back().root(1.0);
 
   }
-
-  */
-
 
   return true;
 

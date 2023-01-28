@@ -83,7 +83,7 @@ bool Drop::descend(){
 
   // Effective Parameter Set
 
-  float effD = depositionRate;
+  float effD = depositionRate*(1.0f - cell->rootdensity);
   if(effD < 0) effD = 0;
 
   // Apply Forces to Particle
@@ -91,7 +91,7 @@ bool Drop::descend(){
   // Gravity Force
 
   if(cell->height > 0.1){
-    
+
     speed += quad::lodsize*gravity*vec2(n.x, n.z)/volume;
 
     vec2 fspeed = vec2(cell->momentumx, cell->momentumy);

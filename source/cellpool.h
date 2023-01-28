@@ -215,6 +215,8 @@ struct cell {
   float momentumx_track;
   float momentumy_track;
 
+  float rootdensity;
+
 };
 
 struct node {
@@ -393,6 +395,11 @@ struct map {
     p /= tileres;
     int ind = p.x*mapsize + p.y;
     return &nodes[ind];
+  }
+
+  inline cell* getCell(ivec2 p){
+    if(oob(p)) return NULL;
+    return get(p)->get(p);
   }
 
   const inline float height(ivec2 p){
