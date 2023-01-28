@@ -95,21 +95,22 @@ size_t N = 0;   //Number of Maximum Buckets
 size_t M = 0;		//Number of Active Buckets
 size_t MAXSIZE = 0;
 
-vector<DAIC> indirect;  //Indirect Drawing Commands
 
-Vertexpool(){
-  glGenVertexArrays(1, &vao); //VAO Generation
-  glBindVertexArray(vao);
+void init(){
+	glGenVertexArrays(1, &vao); //VAO Generation
+	glBindVertexArray(vao);
 	glGenBuffers(1, &vbo);			//Buffer Generation
 	glGenBuffers(1, &ebo);
-  glGenBuffers(1, &indbo);
-  T::format(vbo);							//Buffer Formatting
+	glGenBuffers(1, &indbo);
+	T::format(vbo);							//Buffer Formatting
 }
 
 public:
 
 vector<GLuint> indices;
+vector<DAIC> indirect;  //Indirect Drawing Commands
 
+Vertexpool(){}
 Vertexpool(int k, int n):Vertexpool(){
   reserve(k, n);
 }
@@ -145,7 +146,9 @@ public:
 
 void reserve(const int k, const int n){
 
-	K = k; N = n; M = n;
+	init();
+
+	K = k; N = n; M = 0;
   const GLbitfield flag = GL_MAP_WRITE_BIT |
 													GL_MAP_PERSISTENT_BIT |
 													GL_MAP_COHERENT_BIT;
@@ -177,7 +180,7 @@ void clear(){
 
 // Extract a section with a size and a group assignment
 
-uint* section(const int size, const int group = 0, vec3 pos = vec3(0)){
+uint* section(const int size, const int group = 0, vec3 pos = vec3(0), const int startindex = 0){
 
   if(size == 0 || size > K){
 		std::cout<<"Vertexpool Error: Insufficient Bucket Size"<<std::endl;
@@ -188,7 +191,7 @@ uint* section(const int size, const int group = 0, vec3 pos = vec3(0)){
 		return NULL;
 	}
 
-	const int first = 0;
+	const int first = startindex;
 
 	const int base = (free.back()-start);
   indirect.emplace_back(size, 1, first, base, new uint(indirect.size()), group);
@@ -196,6 +199,7 @@ uint* section(const int size, const int group = 0, vec3 pos = vec3(0)){
 
 	indirect.back().pos = pos;
 
+	M++;
 	return indirect.back().index;
 
 }
@@ -216,6 +220,7 @@ void unsection(uint* index){
 	swap(indirect[*index], indirect.back());
 	indirect.pop_back();
 
+	M--;
 	*indirect[*index].index = *index; //Value Copy!
 	delete index;
 

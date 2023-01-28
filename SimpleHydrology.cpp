@@ -2,21 +2,23 @@
 #include <TinyEngine/camera>
 #include <TinyEngine/image>
 
-#define WSIZE 512
-#define FREQUENCY 1
-#define SCALE 80
-
+#include "source/model.h"
 #include "source/vertexpool.h"
 #include "source/world.h"
-#include "source/model.h"
+
+mappool::pool<quad::cell> cellpool;
+Vertexpool<Vertex> vertexpool;
 
 int main( int argc, char* args[] ) {
+
+  Tiny::view.vsync = false;
+  Tiny::view.antialias = 0;
+  Tiny::window("Simple Hydrology", WIDTH, HEIGHT);
 
   //Initialize the World
 
   World world;
 
-  std::cout<<argc<<std::endl;
   if(argc >= 2){
     World::SEED = std::stoi(args[1]);
     srand(std::stoi(args[1]));
@@ -26,18 +28,38 @@ int main( int argc, char* args[] ) {
     srand(World::SEED);
   }
 
-  world.generate();
+
+
+  cellpool.reserve(quad::area);
+  vertexpool.reserve(quad::tilearea, quad::maparea);
+
+  World::map.init(vertexpool, cellpool, World::SEED);
+
+  //Vertexpool for Drawing Surface
+
+  for(auto& node: world.map.nodes){
+    updatenode(vertexpool, node);
+  }
+
+
+
+
+
+
+
+
+
+
 
   //Initialize the Visualization
 
-  Tiny::window("Simple Hydrology", WIDTH, HEIGHT);
 
   glDisable(GL_CULL_FACE);
 
   cam::near = -800.0f;
   cam::far = 800.0f;
   cam::moverate = 10.0f;
-  cam::look = glm::vec3(WSIZE/2, 0, WSIZE/2);
+  cam::look = glm::vec3(quad::size/2, 0, quad::size/2);
   cam::roty = 45.0f;
   cam::init(3, cam::ORTHO);
   cam::update();
@@ -49,6 +71,7 @@ int main( int argc, char* args[] ) {
   Shader billboard({"source/shader/billboard.vs", "source/shader/billboard.fs"}, {"in_Quad", "in_Tex"});
   Shader sprite({"source/shader/sprite.vs", "source/shader/sprite.fs"}, {"in_Quad", "in_Tex", "in_Model"});
   Shader spritedepth({"source/shader/spritedepth.vs", "source/shader/spritedepth.fs"}, {"in_Quad", "in_Tex", "in_Model"});
+  Shader heightshader({"source/shader/height.vs", "source/shader/height.fs"}, {"in_Position"});
 
   //Trees as a Particle System
   Square3D treemodel;									//Model we want to instance render!
@@ -62,22 +85,17 @@ int main( int argc, char* args[] ) {
   std::vector<glm::mat4> treemodels;
 
   //Rendering Targets / Framebuffers
-  Billboard image(WIDTH, HEIGHT);     //1200x800, color and depth
-  Billboard shadow(4000, 4000); //800x800, depth only
+  Billboard image(WIDTH, HEIGHT);             //1200x800, color and depth
+  Billboard heightimage(WIDTH, HEIGHT);     //1200x800, height levels
+  Billboard shadow(8000, 8000);               //800x800, depth only
   Square2D flat;
-
-  //Vertexpool for Drawing Surface
-  Vertexpool<Vertex> vertexpool(WSIZE*WSIZE, 1);
-  section = vertexpool.section(WSIZE*WSIZE, 0, glm::vec3(0));
-  indexmap(vertexpool, world);
-  updatemap(vertexpool, world);
 
   //Texture for Hydrology Map Visualization
   Texture map(image::make([&](int i){
-    double t1 = world.discharge[i];
+    double t1 = 0.0f;
     glm::vec4 color = glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(0.2, 0.5, 1.0, 1.0), t1);
     return color;
-  }, world.dim));
+  }, quad::res));
 
   glm::mat4 mapmodel = glm::mat4(1.0f);
 
@@ -125,6 +143,11 @@ int main( int argc, char* args[] ) {
 
     }
 
+    heightimage.target(vec3(1,1,1));
+    heightshader.use();
+    heightshader.uniform("vp", cam::vp);
+    vertexpool.render(GL_TRIANGLES);
+
     //Render Scene to Image
 
     image.target(skyCol);
@@ -169,6 +192,7 @@ int main( int argc, char* args[] ) {
     effect.use();                             //Prepare Shader
     effect.texture("imageTexture", image.texture);
     effect.texture("depthTexture", image.depth);
+    effect.texture("heightTexture", heightimage.texture);
     flat.render();                            //Render Image
 
     if(viewmap){
@@ -182,20 +206,25 @@ int main( int argc, char* args[] ) {
 
   };
 
+  int n = 0;
   Tiny::loop([&](){
 
     if(paused)
       return;
 
-    world.erode(500*FREQUENCY*FREQUENCY); //Execute Erosion Cycles
-    Vegetation::grow();     //Grow Trees
+    world.erode(quad::tilesize); //Execute Erosion Cycles
+  //  Vegetation::grow();     //Grow Trees
 
-    updatemap(vertexpool, world);
+    for(auto& node: world.map.nodes){
+      updatenode(vertexpool, node);
+    }
+
+    cout<<n++<<endl;
 
     //Update the Tree Particle System
     treemodels.clear();
     for(auto& t: Vegetation::plants){
-      glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(t.pos.x, t.size + SCALE*world.height(t.pos), t.pos.y));
+      glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(t.pos.x, t.size + quad::mapscale*world.map.get(t.pos)->get(t.pos)->height, t.pos.y));
       model = glm::scale(model, glm::vec3(t.size));
       treemodels.push_back(model);
     }
@@ -207,21 +236,31 @@ int main( int argc, char* args[] ) {
 
       if(viewmomentum)
       map.raw(image::make([&](int i){
-        double t1 = World::getDischarge(vec2(i/World::dim.y, i%World::dim.y));
-        glm::vec4 color = glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(0.2, 0.5, 1.0, 1.0), t1);
+
+        vec2 p = math::unflatten(i, quad::res);
+        double d = World::map.discharge(p);
+        if(World::map.height(p) < 0.1)
+          d = 0.5;
+
+        glm::vec4 color = glm::mix(glm::vec4(0.0, 0.0, 0.0, 1.0), glm::vec4(0.2, 0.5, 1.0, 1.0), d);
         return color;
-      }, world.dim));
+      }, quad::res));
 
       else
       map.raw(image::make([&](int i){
 
-        float mx = world.momentumx[i];
-        float my = world.momentumy[i];
+        auto node = world.map.get(math::unflatten(i, quad::res));
+        auto cell = node->get(math::unflatten(i, quad::res));
+
+        if(cell->height < 0.1)
+          return glm::vec4(0,0,0,1);
+
+        float mx = cell->momentumx;
+        float my = cell->momentumy;
 
         glm::vec4 color = glm::vec4(abs(erf(mx)), 0, abs(erf(my)), 1.0);
-
         return color;
-      }, world.dim));
+      }, quad::res));
     }
 
   });

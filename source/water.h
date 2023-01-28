@@ -34,7 +34,7 @@ struct Drop {
 
   // Main Methods
 
-  bool descend(float* track, float* mx, float* my, float scale);
+  bool descend();
 
 };
 
@@ -55,91 +55,98 @@ float Drop::momentumTransfer = 1.0f;
 ================================================================================
 */
 
-bool Drop::descend(float* track, float* mx, float* my, float scale){
+bool Drop::descend(){
 
-  // Pointers to Relevant Storage Buffers, Parameters
+  const glm::ivec2 ipos = pos;
 
-  glm::ivec2 dim = World::dim;
-  glm::vec3 n = World::normal(pos);
+  quad::node* node = World::map.get(ipos);
+  if(node == NULL)
+    return false;
 
-  static float* h = World::heightmap;
-  static float* p = World::discharge;
-  static float* pd = Vegetation::density;
+  quad::cell* cell = node->get(ipos);
+  if(cell == NULL)
+    return false;
 
-  //Initial Position
-
-  glm::ivec2 ipos = pos;
-  int ind = ipos.x*dim.y+ipos.y;
+  const glm::vec3 n = World::map.normal(ipos);
 
   // Termination Checks
 
   if(age > maxAge){
-    h[ind] += sediment;
+    cell->height += sediment;
     return false;
   }
 
   if(volume < minVol){
-    h[ind] += sediment;
+    cell->height += sediment;
     return false;
   }
 
   // Effective Parameter Set
 
-  float effD = depositionRate*1.0-pd[ind];//max(0.0, );
+  float effD = depositionRate;
   if(effD < 0) effD = 0;
 
   // Apply Forces to Particle
 
   // Gravity Force
 
-  speed += gravity*vec2(n.x, n.z)/volume;
+  if(cell->height > 0.1){
+    
+    speed += quad::lodsize*gravity*vec2(n.x, n.z)/volume;
+
+    vec2 fspeed = vec2(cell->momentumx, cell->momentumy);
+    if(length(fspeed) > 0 && length(speed) > 0)
+      speed += quad::lodsize*momentumTransfer*dot(normalize(fspeed), normalize(speed))/(volume + cell->discharge)*fspeed;
+
+  }
 
   // Momentum Transfer Force
 
-  vec2 fspeed = vec2(World::momentumx[ind], World::momentumy[ind]);
-  if(length(fspeed) > 0 && length(speed) > 0)
-    speed += momentumTransfer*dot(normalize(fspeed), normalize(speed))/(volume + p[ind])*fspeed;
 
   // Dynamic Time-Step, Update
 
   if(length(speed) > 0)
-    speed = sqrt(2.0f)*normalize(speed);
+    speed = (quad::lodsize*sqrt(2.0f))*normalize(speed);
 
   pos   += speed;
 
   // Update Discharge, Momentum Tracking Maps
 
-  track[ind] += volume;
-  mx[ind] += volume*speed.x;
-  my[ind] += volume*speed.y;
-
-  //New Position
-  int nind = (int)pos.x*dim.y+(int)pos.y;
+  cell->discharge_track += volume;
+  cell->momentumx_track += volume*speed.x;
+  cell->momentumy_track += volume*speed.y;
 
   //Out-Of-Bounds
   float h2;
-  if(World::oob(pos))
-    h2 = h[ind]-0.003;
+  if(World::map.oob(pos))
+    h2 = cell->height-0.002;
   else
-    h2 = h[nind];
+    h2 = World::map.height(pos);
 
   //Mass-Transfer (in MASS)
-  float c_eq = (1.0f+entrainment*World::getDischarge(ipos))*(h[ind]-h2);
-  if(c_eq < 0) c_eq = 0;//max(0.0, (h[ind]-h[nind]));
-  float cdiff = c_eq - sediment;
+  float c_eq = (1.0f+entrainment*node->discharge(ipos))*(cell->height-h2);
+  if(c_eq < 0) c_eq = 0;
+  float cdiff = (c_eq - sediment);
 
   sediment += effD*cdiff;
-  h[ind] -= effD*cdiff;
+  cell->height -= effD*cdiff;
 
   //Evaporate (Mass Conservative)
   sediment /= (1.0-evapRate);
   volume *= (1.0-evapRate);
 
   //Out-Of-Bounds
-  if(World::oob(pos)){
+  if(World::map.oob(pos)){
     volume = 0.0;
     return false;
   }
+
+  /*
+  if(World.height(pos) < 0.1){
+    volume = 0.0;
+    return false;
+  }
+  */
 
   World::cascade(pos);
 
