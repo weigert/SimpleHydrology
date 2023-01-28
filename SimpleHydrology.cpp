@@ -12,7 +12,7 @@ Vertexpool<Vertex> vertexpool;
 int main( int argc, char* args[] ) {
 
   Tiny::view.vsync = false;
-  Tiny::view.antialias = 0;
+  Tiny::view.antialias = 16;
   Tiny::window("Simple Hydrology", WIDTH, HEIGHT);
 
   //Initialize the World
@@ -59,7 +59,7 @@ int main( int argc, char* args[] ) {
   cam::near = -800.0f;
   cam::far = 800.0f;
   cam::moverate = 10.0f;
-  cam::look = glm::vec3(quad::size/2, 0, quad::size/2);
+  cam::look = glm::vec3(quad::size/2, quad::mapscale/2, quad::size/2);
   cam::roty = 45.0f;
   cam::rot = 180.0f;
   cam::init(3, cam::ORTHO);
@@ -92,6 +92,8 @@ int main( int argc, char* args[] ) {
   Square2D flat;
 
   //Texture for Hydrological Map Visualization
+
+  Texture normalMap(image::load("resource/normal.png"));
 
   Texture momentumMap(image::make([&](const ivec2 p){
     return vec4(0,0,0,0);
@@ -155,6 +157,7 @@ int main( int argc, char* args[] ) {
     shader.uniform("dbvp", dbvp);
     shader.texture("shadowMap", shadow.depth);
     shader.texture("dischargeMap", dischargeMap);
+    shader.texture("normalMap", normalMap);
 
     shader.uniform("lightCol", lightCol);
     shader.uniform("lightPos", lightPos);

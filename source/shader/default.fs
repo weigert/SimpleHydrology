@@ -4,6 +4,11 @@ in vec4 ex_Position;
 in vec3 ex_Normal;
 in vec4 ex_Color;
 in vec4 ex_Shadow;
+in vec2 ex_Surface;
+in mat3 TBN;
+
+in float steepness;
+in float discharge;
 
 //Lighting
 uniform vec3 lightCol;
@@ -14,6 +19,7 @@ uniform float lightStrength;
 out vec4 fragColor;
 
 uniform sampler2D shadowMap;
+uniform sampler2D normalMap;
 
 float gridSample(const int size){
 
@@ -51,7 +57,7 @@ float shade(){
 
 
 
-vec3 blinnphong(){
+vec3 blinnphong(vec3 normal){
 
   // Ambient (Factor)
 
@@ -60,16 +66,16 @@ vec3 blinnphong(){
   // Diffuse (Factor)
 
   vec3 lightDir = normalize(lightPos - ex_Position.xyz);
-  float diffuse  = 0.7*clamp(dot(ex_Normal, lightDir), 0.1, 0.9);
+  float diffuse  = 0.7*clamp(dot(normal, lightDir), 0.1, 0.9);
 
   // Specular Lighting (Factor)
 
-  float specularStrength = 0.15;
+  float specularStrength = 0.05 + 0.85*discharge;
 
   vec3 viewDir = normalize(lookDir - ex_Position.xyz);
   vec3 halfwayDir = normalize(lightDir + viewDir);
 
-  float spec = pow(max(dot(ex_Normal, halfwayDir), 0.0), 32);
+  float spec = pow(max(dot(normal, halfwayDir), 0.0), 64);
   float specular = specularStrength * spec;
 
   // Multiply by Lightcolor
@@ -80,6 +86,27 @@ vec3 blinnphong(){
 
 void main() {
 
-   fragColor = vec4(blinnphong()*ex_Color.xyz, 1.0);
+   // Vertex-Shader Color
+
+   fragColor = ex_Color;
+
+   // Normal-Map Vector
+
+   vec3 normal = ex_Normal;
+
+   /*
+   vec3 texnormal = texture(normalMap, mod(ex_Surface, vec2(16))/16).xyz;
+   texnormal = TBN*normalize(texnormal * 2.0 - 1.0);
+   normal = mix(normal, texnormal, steepness);
+   */
+
+   fragColor = vec4(blinnphong(normal)*fragColor.xyz, 1.0);
+  // fragColor = vec4(blinnphong(ex_Normal)*fragColor.xyz, 1.0);
+
+//   fragColor = vec4(ex_Normal, 1);
+
+   // fragColor = ;
+
+
 
 }

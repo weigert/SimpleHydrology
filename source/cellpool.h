@@ -162,7 +162,7 @@ struct pool {
 
 namespace quad {
 
-const int mapscale = 80;
+const int mapscale = 60;
 
 const int tilesize = 512;
 const int tilearea = tilesize*tilesize;
@@ -234,7 +234,9 @@ struct node {
   }
 
   const inline float height(ivec2 p){
-    return get(p)->height;
+    cell* c = get(p);
+    if(c == NULL) return 0.0f;
+    return c->height;
   }
 
   const inline float discharge(ivec2 p){
@@ -272,12 +274,19 @@ void updatenode(Vertexpool<Vertex>& vertexpool, quad::node& t){
 
   for(auto [cell, pos]: t.s){
 
-    float height = quad::mapscale*t.height(t.pos + lodsize*pos);
-    glm::vec3 normal = t.normal(t.pos + lodsize*pos);
+    glm::vec2 p = t.pos + lodsize*pos;
+    glm::vec2 pT = t.pos + lodsize*(pos + ivec2( 1, 0));
+    glm::vec2 pB = t.pos + lodsize*(pos + ivec2( 0, 1));
+
+    glm::vec3 P = glm::vec3(p.x, quad::mapscale*t.height(p), p.y);
+    glm::vec3 T = glm::vec3(pT.x, quad::mapscale*t.height(pT), pT.y);
+    glm::vec3 B = glm::vec3(pB.x, quad::mapscale*t.height(pB), pB.y);
 
     vertexpool.fill(t.vertex, math::flatten(pos, tileres/lodsize),
-      glm::vec3(t.pos.x + lodsize*pos.x, height, t.pos.y + lodsize*pos.y),
-      normal
+      P,
+      t.normal(p),
+      T - P,
+      B - P
     );
 
   }
