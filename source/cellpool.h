@@ -162,7 +162,7 @@ struct pool {
 
 namespace quad {
 
-const int mapscale = 60;
+const int mapscale = 80;
 
 const int tilesize = 512;
 const int tilearea = tilesize*tilesize;

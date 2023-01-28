@@ -20,6 +20,7 @@ out vec4 fragColor;
 
 uniform sampler2D shadowMap;
 uniform sampler2D normalMap;
+uniform sampler2D occlusionTexture;
 
 float gridSample(const int size){
 
@@ -61,7 +62,7 @@ vec3 blinnphong(vec3 normal){
 
   // Ambient (Factor)
 
-  float ambient = 0.6;
+  float ambient = 0.7;
 
   // Diffuse (Factor)
 
@@ -69,6 +70,9 @@ vec3 blinnphong(vec3 normal){
   float diffuse  = 0.7*clamp(dot(normal, lightDir), 0.1, 0.9);
 
   // Specular Lighting (Factor)
+
+  vec2 ex_Tex = ex_Position.xy*0.5 + 0.5;
+  float ambientOcclusion = texture(occlusionTexture, ex_Tex).r;
 
   float specularStrength = 0.05 + 0.85*discharge;
 
@@ -80,7 +84,7 @@ vec3 blinnphong(vec3 normal){
 
   // Multiply by Lightcolor
 
-  return (ambient + (1.0 - shade())*(diffuse + specular))*lightCol;
+  return (ambientOcclusion*ambient + (1.0 - shade())*(diffuse + ambientOcclusion*specular))*lightCol;
 
 }
 
@@ -94,11 +98,11 @@ void main() {
 
    vec3 normal = ex_Normal;
 
-   /*
+
    vec3 texnormal = texture(normalMap, mod(ex_Surface, vec2(16))/16).xyz;
    texnormal = TBN*normalize(texnormal * 2.0 - 1.0);
    normal = mix(normal, texnormal, steepness);
-   */
+
 
    fragColor = vec4(blinnphong(normal)*fragColor.xyz, 1.0);
   // fragColor = vec4(blinnphong(ex_Normal)*fragColor.xyz, 1.0);

@@ -12,7 +12,9 @@ uniform vec3 skycolor;
 
 void main(){
 
-    fragColor = texture(imageTexture, ex_Tex);
+//  fragColor = vec4(vec3(texture(occlusionTexture, ex_Tex).r), 1);
+    fragColor = vec4(vec3(texture(imageTexture, ex_Tex).rgb), 1);
+  //  fragColor
 
     /*
     int foundedge = 0;
@@ -34,10 +36,15 @@ void main(){
 
       */
 
-    float depthVal = 1.0f-clamp(texture(depthTexture, ex_Tex).r, 0.0, 1.0);
 
-    if(depthVal > 0)
+
+//    float depthVal = 1.0-clamp(texture(depthTexture, ex_Tex).r, 0.0, 1.0);
+
+//    if(depthVal > 0)
       //      fragColor = mix(fragColor, vec4(vec3(1), 1), pow(2*depthVal-0.55,2));
         //    //If it is a visible thing...
-      fragColor = mix(fragColor, vec4(1.0), pow(3*(depthVal-0.55),2));  //White Fog Color!
+//      fragColor = mix(fragColor, vec4(1.0), pow(1*(depthVal-0.8),2));  //White Fog Color!
+
+
+
 }
