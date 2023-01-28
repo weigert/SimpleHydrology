@@ -8,8 +8,6 @@ layout(location = 2) in vec4 in_Color;
 uniform mat4 vp;
 uniform mat4 dbvp;
 
-uniform sampler2D shadowMap;
-
 // We output the ex_Color variable to the next shader in the chain
 out vec4 ex_Position;
 out vec3 ex_Normal;

@@ -54,6 +54,4 @@ void main(){
   if(color.a == 0.0) discard;
   else fragColor = shade()*vec4(diffuse*color.xyz, 1.0);
 
-
-
 }

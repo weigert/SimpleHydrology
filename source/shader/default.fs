@@ -13,14 +13,18 @@ uniform float lightStrength;
 
 out vec4 fragColor;
 
-/*
-float gridSample(int size){
+uniform sampler2D shadowMap;
+
+float gridSample(const int size){
+
+  const float area = ((1 + 2*size)*(1 + 2*size));
+
   //Stuff
   float shadow = 0.0;
   float currentDepth = ex_Shadow.z;
 
   //Compute Bias
-  float m = 1-dot(in_Normal, normalize(lightPos));
+  float m = 1-dot(ex_Normal, normalize(lightPos));
   float bias = mix(0.002, 0.2*m, pow(m, 5));
 
   for(int x = -size; x <= size; ++x){
@@ -30,15 +34,14 @@ float gridSample(int size){
       }
   }
   //Normalize
-  shadow/=12.0;
+  shadow /= area;//12.0;
   return shadow;
 }
 
 float shade(){
 
-
     float shadow = 0.0;
-		int size = 1;
+		const int size = 1;
 
     if(greaterThanEqual(ex_Shadow.xy, vec2(0.0f)) == bvec2(true) && lessThanEqual(ex_Shadow.xy, vec2(1.0f)) == bvec2(true))
       shadow = gridSample(size);
@@ -46,18 +49,18 @@ float shade(){
 		return shadow;
 }
 
-*/
+
 
 vec3 blinnphong(){
 
   // Ambient (Factor)
 
-  float ambient = 0.5;
+  float ambient = 0.6;
 
   // Diffuse (Factor)
 
   vec3 lightDir = normalize(lightPos - ex_Position.xyz);
-  float diffuse = clamp(dot(ex_Normal, lightDir), 0.1, 0.9);
+  float diffuse  = 0.7*clamp(dot(ex_Normal, lightDir), 0.1, 0.9);
 
   // Specular Lighting (Factor)
 
@@ -71,7 +74,7 @@ vec3 blinnphong(){
 
   // Multiply by Lightcolor
 
-  return (ambient + diffuse + specular)*lightCol;
+  return (ambient + (1.0 - shade())*(diffuse + specular))*lightCol;
 
 }
 
