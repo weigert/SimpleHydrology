@@ -105,6 +105,7 @@ void World::cascade(vec2 pos){
   struct Point {
     ivec2 pos;
     float h;
+    float d;
   };
 
   static Point sn[8];
@@ -119,7 +120,7 @@ void World::cascade(vec2 pos){
     if(World::map.oob(npos))
       continue;
 
-    sn[num++] = { npos, World::map.get(npos)->get(npos)->height };
+    sn[num++] = { npos, World::map.get(npos)->get(npos)->height, length(vec2(nn)) };
 
   }
 
@@ -141,7 +142,7 @@ void World::cascade(vec2 pos){
       //The Amount of Excess Difference!
     float excess = 0.0f;
     if(sn[i].h > 0.1){
-      excess = abs(diff) - maxdiff * quad::lodsize;
+      excess = abs(diff) - sn[i].d*maxdiff * quad::lodsize;
     } else {
       excess = abs(diff);
     }
