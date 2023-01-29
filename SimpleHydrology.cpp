@@ -85,11 +85,13 @@ int main( int argc, char* args[] ) {
 
   Texture gPosition(WIDTH, HEIGHT, {GL_RGBA16F, GL_RGBA, GL_FLOAT});
   Texture gNormal(WIDTH, HEIGHT, {GL_RGBA16F, GL_RGBA, GL_FLOAT});
+  Texture gColor(WIDTH, HEIGHT, {GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE});
   Texture gDepth(WIDTH, HEIGHT, {GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT, GL_UNSIGNED_BYTE});
 
   Target gBuffer(WIDTH, HEIGHT);
   gBuffer.bind(gPosition, GL_COLOR_ATTACHMENT0);
   gBuffer.bind(gNormal, GL_COLOR_ATTACHMENT1);
+  gBuffer.bind(gColor, GL_COLOR_ATTACHMENT2);
   gBuffer.bind(gDepth, GL_DEPTH_ATTACHMENT);
 
   Texture ssaotex(WIDTH, HEIGHT, {GL_RED, GL_RED, GL_FLOAT});
@@ -184,6 +186,7 @@ int main( int argc, char* args[] ) {
     geometryshader.use();
     geometryshader.uniform("proj", cam::proj);
     geometryshader.uniform("view", cam::view);
+    geometryshader.texture("dischargeMap", dischargeMap);
     vertexpool.render(GL_TRIANGLES);
 
     // SSAO Texture
@@ -221,19 +224,33 @@ int main( int argc, char* args[] ) {
     //Render Scene to Image
 
     image.target(skyCol);
-
     shader.use();
-    shader.uniform("vp", cam::vp);
-    shader.uniform("dbvp", dbvp);
-    shader.texture("shadowMap", shadowmap);
-    shader.texture("dischargeMap", dischargeMap);
-    shader.texture("normalMap", normalMap);
-    shader.texture("occlusionTexture", ssaotex);
+    shader.texture("gPosition", gPosition);
+    shader.texture("gNormal", gNormal);
+    shader.texture("gColor", gColor);
+    shader.texture("ssaoTex", ssaotex);
+
+    shader.uniform("view", cam::view);
     shader.uniform("lightCol", lightCol);
     shader.uniform("lightPos", lightPos);
     shader.uniform("lookDir", cam::pos);
     shader.uniform("lightStrength", lightStrength);
-    vertexpool.render(GL_TRIANGLES);    //Render Model
+
+    shader.uniform("dbvp", dbvp);
+    shader.texture("shadowMap", shadowmap);
+
+    shader.texture("dischargeMap", dischargeMap);
+
+    flat.render();
+
+
+
+
+
+
+
+
+    /*
 
     if(!Vegetation::plants.empty()){
 
@@ -257,6 +274,8 @@ int main( int argc, char* args[] ) {
 
     }
 
+    */
+
     //Render to Screen
 
     Tiny::view.target(skyCol);    //Prepare Target
@@ -264,7 +283,7 @@ int main( int argc, char* args[] ) {
     effect.use();                             //Prepare Shader
     effect.texture("imageTexture", image.texture);
     effect.texture("depthTexture", image.depth);
-    effect.texture("occlusionTexture", ssaotex);
+    effect.texture("occlusionTexture", gColor);
     flat.render();                            //Render Image
 
     if(viewmap){

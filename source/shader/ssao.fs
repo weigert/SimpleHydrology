@@ -1,7 +1,8 @@
-#version 330 core
-out float FragColor;
+#version 430 core
 
 in vec2 ex_Tex;
+
+out float fragColor;
 
 uniform sampler2D gPosition;
 uniform sampler2D gNormal;
@@ -19,8 +20,7 @@ const vec2 noiseScale = vec2(1.0/4.0, 1.0/4.0);
 
 uniform mat4 projection;
 
-void main()
-{
+void main() {
     // get input for SSAO algorithm
     vec3 fragPos = texture(gPosition, ex_Tex).xyz;
     vec3 normal = normalize(texture(gNormal, ex_Tex).rgb);
@@ -50,10 +50,8 @@ void main()
         float rangeCheck = smoothstep(0.0, 1.0, radius / abs(fragPos.z - sampleDepth));
         occlusion += (sampleDepth >= samplePos.z + bias ? 1.0 : 0.0) * rangeCheck;
     }
-    occlusion = 1.0 - (occlusion / kernelSize);
 
-    FragColor = occlusion;
-  //  FragColor = (texture(gPosition, ex_Tex).z+800)/1600;
-  //  FragColor = texture(gNormal, ex_Tex).z;
+    occlusion = 1.0 - (occlusion / kernelSize);
+    fragColor = occlusion;
 
 }
