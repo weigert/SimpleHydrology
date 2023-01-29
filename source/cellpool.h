@@ -303,7 +303,7 @@ void updatenode(Vertexpool<Vertex>& vertexpool, quad::node& t){
     );
 
   }
-  
+
   /*
   for(size_t i = 0; i < tilesize/lodsize; i++){
     vertexpool.fill(t.vertex, tilesize + i,

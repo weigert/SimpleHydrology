@@ -8,11 +8,15 @@ uniform sampler2D dischargeMap;
 
 out vec3 ex_Position;
 out vec3 ex_Normal;
-out vec4 ex_Color;
+out vec3 ex_Color;
 
 const mat4 model = mat4(1.0f);
 uniform mat4 view;
 uniform mat4 proj;
+
+uniform vec3 flatColor;
+uniform vec3 waterColor;
+uniform vec3 steepColor;
 
 void main() {
 
@@ -22,9 +26,6 @@ void main() {
     gl_Position = proj * v_Position;
 
     // Color-Computation
-    const vec4 flatColor = vec4(0.40, 0.60, 0.25, 1);
-    const vec4 waterColor = vec4(0.17, 0.40, 0.44, 1);
-    const vec4 steepColor = vec4(vec3(0.7), 1);
 
     float steepness = 1.0f-pow(clamp((in_Normal.y-0.4)/0.6, 0.0, 1.0), 2);
     const ivec2 size = textureSize(dischargeMap, 0);

@@ -163,7 +163,35 @@ int main( int argc, char* args[] ) {
       viewmomentum = !viewmomentum;
   };
 
-  Tiny::view.interface = [](){};
+  Tiny::view.interface = [](){
+    ImGui::SetNextWindowSize(ImVec2(480, 260), ImGuiCond_Once);
+    ImGui::SetNextWindowPos(ImVec2(50, 470), ImGuiCond_Once);
+    ImGui::Begin("SimpleHydrology", NULL, ImGuiWindowFlags_NoResize);
+    ImGui::ColorEdit3("Flat Color", &flatColor[0]);
+    ImGui::ColorEdit3("Steep Color", &steepColor[0]);
+    ImGui::ColorEdit3("Water Color", &waterColor[0]);
+    ImGui::ColorEdit3("Sky Color", &skyCol[0]);
+    ImGui::DragFloat("lightStrength", &lightStrength);
+    if(ImGui::DragFloat3("lightPos", &lightPos[0])){
+
+      //Matrix for Making Stuff Face Towards Light (Trees)
+      rot = -1.0f * acos(glm::dot(glm::vec3(1, 0, 0), glm::normalize(glm::vec3(lightPos.x, 0, lightPos.z))));
+      faceLight = glm::rotate(glm::mat4(1.0), rot , glm::vec3(0.0, 1.0, 0.0));
+
+      dp = glm::ortho<float>(-400, 400, -400, 400, 0, 800);
+      dv = glm::lookAt(worldcenter + lightPos, worldcenter, glm::vec3(0,1,0));
+      bias = glm::mat4(
+          0.5, 0.0, 0.0, 0.0,
+          0.0, 0.5, 0.0, 0.0,
+          0.0, 0.0, 0.5, 0.0,
+          0.5, 0.5, 0.5, 1.0
+      );
+      dvp = dp*dv;
+      dbvp = bias*dvp;
+
+    }
+    ImGui::End();
+  };
 
   Tiny::view.pipeline = [&](){
 
@@ -174,6 +202,9 @@ int main( int argc, char* args[] ) {
     defaultshader.uniform("proj", cam::proj);
     defaultshader.uniform("view", cam::view);
     defaultshader.texture("dischargeMap", dischargeMap);
+    defaultshader.uniform("flatColor", flatColor);
+    defaultshader.uniform("waterColor", waterColor);
+    defaultshader.uniform("steepColor", steepColor);
     vertexpool.render(GL_TRIANGLES);
 
     if(!Vegetation::plants.empty()){

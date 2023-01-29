@@ -86,7 +86,7 @@ vec3 blinnphong(){
 
   // Multiply by Lightcolor
 
-  return (ambientOcclusion*ambient + (1.0 - shade())*(diffuse + ambientOcclusion*specular))*lightCol;
+  return lightStrength*(ambientOcclusion*ambient + (1.0 - shade())*(diffuse + ambientOcclusion*specular))*lightCol;
 
 }
 
@@ -108,8 +108,12 @@ void main() {
   // Depth-Fog
 
   float depthVal = clamp(texture(gDepth, ex_Tex).r, 0.0, 1.0);
-  if(depthVal < 1)
+  if(depthVal == 1) fragColor = vec4(skyCol, 1);
+  /*
     fragColor = mix(fragColor, vec4(1.0), 0.4*pow(depthVal, 2));
-  else fragColor = vec4(skyCol, 1);
+  else{
+    fragColor = mix(vec4(skyCol, 1), vec4(0,0,0,1), 0.0);//-ex_Tex.y);
+  }
+  */
 
 }
