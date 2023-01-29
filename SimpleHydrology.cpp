@@ -8,13 +8,6 @@
 
 #include <random>
 
-
-float ourLerp(float a, float b, float f)
-{
-    return a + f * (b - a);
-}
-
-
 mappool::pool<quad::cell> cellpool;
 Vertexpool<Vertex> vertexpool;
 
@@ -61,15 +54,15 @@ int main( int argc, char* args[] ) {
 
   //Setup Shaders
 
-  Shader geometryshader({"source/shader/geometry.vs", "source/shader/geometry.fs"}, {"in_Position", "in_Normal", "in_Tangent", "in_Bitangent"});
+  Shader defaultshader({"source/shader/default.vs", "source/shader/default.fs"}, {"in_Position", "in_Normal", "in_Tangent", "in_Bitangent"});
+  Shader defaultdepth({"source/shader/depth.vs", "source/shader/depth.fs"}, {"in_Position"});
 
-  Shader shader({"source/shader/default.vs", "source/shader/default.fs"}, {"in_Position", "in_Normal", "in_Color"});
-  Shader depth({"source/shader/depth.vs", "source/shader/depth.fs"}, {"in_Position"});
-  Shader mapshader({"source/shader/map.vs", "source/shader/map.fs"}, {"in_Quad", "in_Tex"});
-  Shader sprite({"source/shader/sprite.vs", "source/shader/sprite.fs"}, {"in_Quad", "in_Tex", "in_Model"});
+  Shader spriteshader({"source/shader/sprite.vs", "source/shader/sprite.fs"}, {"in_Quad", "in_Tex", "in_Model"});
   Shader spritedepth({"source/shader/spritedepth.vs", "source/shader/spritedepth.fs"}, {"in_Quad", "in_Tex", "in_Model"});
-  Shader effect({"source/shader/effect.vs", "source/shader/effect.fs"}, {"in_Quad", "in_Tex"});
+
   Shader ssaoshader({"source/shader/ssao.vs", "source/shader/ssao.fs"}, {"in_Quad", "in_Tex"});
+  Shader imageshader({"source/shader/image.vs", "source/shader/image.fs"}, {"in_Quad", "in_Tex"});
+  Shader mapshader({"source/shader/map.vs", "source/shader/map.fs"}, {"in_Quad", "in_Tex"});
 
   //Rendering Targets / Framebuffers
 
@@ -103,36 +96,30 @@ int main( int argc, char* args[] ) {
   std::uniform_real_distribution<GLfloat> randomFloats(0.0, 1.0); // generates random floats between 0.0 and 1.0
   std::default_random_engine generator;
   std::vector<glm::vec3> ssaoKernel;
-  for (unsigned int i = 0; i < 64; ++i)
-  {
+  for (unsigned int i = 0; i < 64; ++i){
       glm::vec3 sample(randomFloats(generator) * 2.0 - 1.0, randomFloats(generator) * 2.0 - 1.0, randomFloats(generator));
       sample = glm::normalize(sample);
       sample *= randomFloats(generator);
       float scale = float(i) / 64.0f;
-
-      // scale samples s.t. they're more aligned to center of kernel
-      scale = ourLerp(0.1f, 1.0f, scale * scale);
+      scale = 0.1f + scale*scale*(1.0f-0.1f);
       sample *= scale;
       ssaoKernel.push_back(sample);
-
   }
 
   // generate noise texture
   // ----------------------
   std::vector<glm::vec3> ssaoNoise;
-  for (unsigned int i = 0; i < 16; i++)
-  {
+  for (unsigned int i = 0; i < 16; i++) {
       glm::vec3 noise(randomFloats(generator) * 2.0 - 1.0, randomFloats(generator) * 2.0 - 1.0, 0.0f); // rotate around z-axis (in tangent space)
       ssaoNoise.push_back(noise);
   }
-  unsigned int noiseTexture; glGenTextures(1, &noiseTexture);
-  glBindTexture(GL_TEXTURE_2D, noiseTexture);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 4, 4, 0, GL_RGB, GL_FLOAT, &ssaoNoise[0]);
+
+  Texture noisetex(4, 4, {GL_RGBA32F, GL_RGB, GL_FLOAT}, &ssaoNoise[0]);
+  glBindTexture(GL_TEXTURE_2D, noisetex.texture);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
 
   //Trees as a Particle System
 
@@ -183,11 +170,24 @@ int main( int argc, char* args[] ) {
     // Render gBuffer geometry pass
 
     gBuffer.target(vec3(0));
-    geometryshader.use();
-    geometryshader.uniform("proj", cam::proj);
-    geometryshader.uniform("view", cam::view);
-    geometryshader.texture("dischargeMap", dischargeMap);
+    defaultshader.use();
+    defaultshader.uniform("proj", cam::proj);
+    defaultshader.uniform("view", cam::view);
+    defaultshader.texture("dischargeMap", dischargeMap);
     vertexpool.render(GL_TRIANGLES);
+
+    if(!Vegetation::plants.empty()){
+
+      glm::mat4 orient = glm::rotate(glm::mat4(1.0f), glm::radians(180.0f-cam::rot), glm::vec3(0.0, 1.0, 0.0));
+
+      spriteshader.use();
+      spriteshader.uniform("proj", cam::proj);
+      spriteshader.uniform("view", cam::view);
+      spriteshader.uniform("om", orient);
+      spriteshader.texture("spriteTexture", tree);
+      treeparticle.render();
+
+    }
 
     // SSAO Texture
 
@@ -198,16 +198,14 @@ int main( int argc, char* args[] ) {
     ssaoshader.uniform("projection", cam::proj);
     ssaoshader.texture("gPosition", gPosition);
     ssaoshader.texture("gNormal", gNormal);
-    glActiveTexture(GL_TEXTURE2);
-    glBindTexture(GL_TEXTURE_2D, noiseTexture);
-    ssaoshader.uniform("texNoise", 2);
+    ssaoshader.texture("texNoise", noisetex);
     flat.render();
 
     //Render Shadowmap
 
     shadow.target();                  //Prepare Target
-    depth.use();                      //Prepare Shader
-    depth.uniform("dvp", dvp);
+    defaultdepth.use();                      //Prepare Shader
+    defaultdepth.uniform("dvp", dvp);
     vertexpool.render(GL_TRIANGLES);  //Render Surface Model
 
     if(!Vegetation::plants.empty()){
@@ -221,70 +219,26 @@ int main( int argc, char* args[] ) {
 
     }
 
-    //Render Scene to Image
-
-    image.target(skyCol);
-    shader.use();
-    shader.texture("gPosition", gPosition);
-    shader.texture("gNormal", gNormal);
-    shader.texture("gColor", gColor);
-    shader.texture("ssaoTex", ssaotex);
-
-    shader.uniform("view", cam::view);
-    shader.uniform("lightCol", lightCol);
-    shader.uniform("lightPos", lightPos);
-    shader.uniform("lookDir", cam::pos);
-    shader.uniform("lightStrength", lightStrength);
-
-    shader.uniform("dbvp", dbvp);
-    shader.texture("shadowMap", shadowmap);
-
-    shader.texture("dischargeMap", dischargeMap);
-
-    flat.render();
-
-
-
-
-
-
-
-
-    /*
-
-    if(!Vegetation::plants.empty()){
-
-      glm::mat4 orient = glm::rotate(glm::mat4(1.0f), glm::radians(180.0f-cam::rot), glm::vec3(0.0, 1.0, 0.0));
-
-      sprite.use();
-      sprite.texture("spriteTexture", tree);
-      sprite.texture("normalTexture", treenormal);
-      sprite.uniform("vp", cam::vp);
-      sprite.uniform("om", orient);
-      sprite.uniform("faceLight", faceLight);
-      sprite.uniform("lightPos", lightPos);
-      sprite.uniform("lookDir", cam::pos);
-
-      sprite.uniform("dbvp", dbvp);
-      sprite.texture("shadowMap", shadowmap);
-      sprite.uniform("lightCol", lightCol);
-      sprite.uniform("lightStrength", lightStrength);
-
-      treeparticle.render();
-
-    }
-
-    */
-
-    //Render to Screen
+    //Render Scene to Screen
 
     Tiny::view.target(skyCol);    //Prepare Target
+    imageshader.use();
+    imageshader.texture("gPosition", gPosition);
+    imageshader.texture("gNormal", gNormal);
+    imageshader.texture("gColor", gColor);
+    imageshader.texture("gDepth", gDepth);
+    imageshader.texture("ssaoTex", ssaotex);
+    imageshader.texture("shadowMap", shadowmap);
+    imageshader.texture("dischargeMap", dischargeMap);
+    imageshader.uniform("view", cam::view);
+    imageshader.uniform("dbvp", dbvp);
+    imageshader.uniform("lightCol", lightCol);
+    imageshader.uniform("lightPos", lightPos);
+    imageshader.uniform("lookDir", cam::pos);
+    imageshader.uniform("lightStrength", lightStrength);
+    flat.render();
 
-    effect.use();                             //Prepare Shader
-    effect.texture("imageTexture", image.texture);
-    effect.texture("depthTexture", image.depth);
-    effect.texture("occlusionTexture", gColor);
-    flat.render();                            //Render Image
+    //Render Map to Screen
 
     if(viewmap){
 
