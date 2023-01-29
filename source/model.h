@@ -24,7 +24,8 @@ glm::vec3 steepColor = glm::vec3(0.7);
 //Lighting and Shading
 glm::vec3 skyCol = glm::vec4(0.64, 0.75, 0.9, 1.0f);
 glm::vec3 lightPos = glm::vec3(-100.0f, 75.0f, -150.0f);
-glm::vec3 lightCol = glm::vec3(1.0f, 1.0f, 0.9f);
+//glm::vec3 lightCol = glm::vec3(1.0f, 1.0f, 0.9f);
+glm::vec3 lightCol = glm::vec3(1.0f, 0.95f, 0.95f);
 float lightStrength = 1.4;
 
 //Matrix for Making Stuff Face Towards Light (Trees)

@@ -20,8 +20,7 @@ Vertexpool<Vertex> vertexpool;
 
 int main( int argc, char* args[] ) {
 
-//  Tiny::view.vsync = false;
-//  Tiny::view.antialias = 0;
+  Tiny::view.vsync = false;
   Tiny::window("Simple Hydrology", WIDTH, HEIGHT);
 
   //Initialize the World
@@ -37,11 +36,8 @@ int main( int argc, char* args[] ) {
     srand(World::SEED);
   }
 
-
-
   cellpool.reserve(quad::area);
   vertexpool.reserve(quad::tilearea, quad::maparea);
-
   World::map.init(vertexpool, cellpool, World::SEED);
 
   //Vertexpool for Drawing Surface
@@ -50,9 +46,9 @@ int main( int argc, char* args[] ) {
     updatenode(vertexpool, node);
   }
 
+  // Initialize the Visualization
 
-
-
+  // Camera
 
   cam::near = -300.0f;
   cam::far = 300.0f;
@@ -63,57 +59,27 @@ int main( int argc, char* args[] ) {
   cam::init(3, cam::ORTHO);
   cam::update();
 
-
-
-
-
-
-
-
-
-
-  //Initialize the Visualization
-
-
-  glDisable(GL_CULL_FACE);
-
-
   //Setup Shaders
+
+  Shader geometryshader({"source/shader/geometry.vs", "source/shader/geometry.fs"}, {"in_Position", "in_Normal", "in_Tangent", "in_Bitangent"});
+
   Shader shader({"source/shader/default.vs", "source/shader/default.fs"}, {"in_Position", "in_Normal", "in_Color"});
   Shader depth({"source/shader/depth.vs", "source/shader/depth.fs"}, {"in_Position"});
   Shader mapshader({"source/shader/map.vs", "source/shader/map.fs"}, {"in_Quad", "in_Tex"});
   Shader sprite({"source/shader/sprite.vs", "source/shader/sprite.fs"}, {"in_Quad", "in_Tex", "in_Model"});
   Shader spritedepth({"source/shader/spritedepth.vs", "source/shader/spritedepth.fs"}, {"in_Quad", "in_Tex", "in_Model"});
-  Shader heightshader({"source/shader/height.vs", "source/shader/height.fs"}, {"in_Position"});
   Shader effect({"source/shader/effect.vs", "source/shader/effect.fs"}, {"in_Quad", "in_Tex"});
-
-  //Trees as a Particle System
-  Square3D treemodel;									//Model we want to instance render!
-  Instance treeparticle(&treemodel);			//Particle system based on this model
-
-  Texture tree(image::load("resource/Tree.png"));
-  Texture treenormal(image::load("resource/TreeNormal.png"));
-
-	Buffer modelbuf;
-	treeparticle.bind<glm::mat4>("in_Model", &modelbuf);			//Update treeparticle system
-  std::vector<glm::mat4> treemodels;
-
-  //Rendering Targets / Framebuffers
-  Billboard image(WIDTH, HEIGHT);             //1200x800, color and depth
-  Billboard heightimage(WIDTH, HEIGHT);       //1200x800, height levels
-  Billboard positionimage(WIDTH, HEIGHT);
-  Billboard occlusionimage(WIDTH, HEIGHT);
-  Billboard shadow(8000, 8000);               //800x800, depth only
-
-  Square2D flat;
-
-
-
-  Shader geometryshader({"source/shader/geometry.vs", "source/shader/geometry.fs"}, {"in_Position", "in_Normal", "in_Tangent", "in_Bitangent"});
   Shader ssaoshader({"source/shader/ssao.vs", "source/shader/ssao.fs"}, {"in_Quad", "in_Tex"});
 
+  //Rendering Targets / Framebuffers
 
+  Billboard image(WIDTH, HEIGHT);             //1200x800, color and depth
 
+  Texture shadowmap(8000, 8000, {GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT, GL_UNSIGNED_BYTE});
+  Target shadow(8000, 8000);
+  shadow.bind(shadowmap, GL_DEPTH_ATTACHMENT);
+
+  Square2D flat;
 
   // SSAO
 
@@ -125,12 +91,6 @@ int main( int argc, char* args[] ) {
   gBuffer.bind(gPosition, GL_COLOR_ATTACHMENT0);
   gBuffer.bind(gNormal, GL_COLOR_ATTACHMENT1);
   gBuffer.bind(gDepth, GL_DEPTH_ATTACHMENT);
-
-  glBindFramebuffer(GL_FRAMEBUFFER, gBuffer.fbo);
-  unsigned int attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1  };
-  glDrawBuffers(2, attachments);
-
-
 
   Texture ssaotex(WIDTH, HEIGHT, {GL_RED, GL_RED, GL_FLOAT});
   Target ssaofbo(WIDTH, HEIGHT);
@@ -168,11 +128,21 @@ int main( int argc, char* args[] ) {
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 4, 4, 0, GL_RGB, GL_FLOAT, &ssaoNoise[0]);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-//  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-//  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
 
+  //Trees as a Particle System
 
+  Square3D treemodel;									//Model we want to instance render!
+  Instance treeparticle(&treemodel);	//Particle system based on this model
+
+  Texture tree(image::load("resource/Tree.png"));
+  Texture treenormal(image::load("resource/TreeNormal.png"));
+
+	Buffer modelbuf;
+	treeparticle.bind<glm::mat4>("in_Model", &modelbuf);			//Update treeparticle system
+  std::vector<glm::mat4> treemodels;
 
   //Texture for Hydrological Map Visualization
 
@@ -212,14 +182,11 @@ int main( int argc, char* args[] ) {
 
     gBuffer.target(vec3(0));
     geometryshader.use();
-    geometryshader.uniform("projection", cam::proj);
+    geometryshader.uniform("proj", cam::proj);
     geometryshader.uniform("view", cam::view);
-    geometryshader.uniform("model", mat4(1.0f));
-    geometryshader.uniform("invertedNormals", 0);
     vertexpool.render(GL_TRIANGLES);
 
-    // 2. generate SSAO texture
-    // ------------------------
+    // SSAO Texture
 
     ssaofbo.target(vec3(0));
     ssaoshader.use();
@@ -251,11 +218,6 @@ int main( int argc, char* args[] ) {
 
     }
 
-    heightimage.target(vec3(1,1,1));
-    heightshader.use();
-    heightshader.uniform("vp", cam::vp);
-    vertexpool.render(GL_TRIANGLES);
-
     //Render Scene to Image
 
     image.target(skyCol);
@@ -263,7 +225,7 @@ int main( int argc, char* args[] ) {
     shader.use();
     shader.uniform("vp", cam::vp);
     shader.uniform("dbvp", dbvp);
-    shader.texture("shadowMap", shadow.depth);
+    shader.texture("shadowMap", shadowmap);
     shader.texture("dischargeMap", dischargeMap);
     shader.texture("normalMap", normalMap);
     shader.texture("occlusionTexture", ssaotex);
@@ -287,27 +249,13 @@ int main( int argc, char* args[] ) {
       sprite.uniform("lookDir", cam::pos);
 
       sprite.uniform("dbvp", dbvp);
-      sprite.texture("shadowMap", shadow.depth);
+      sprite.texture("shadowMap", shadowmap);
       sprite.uniform("lightCol", lightCol);
       sprite.uniform("lightStrength", lightStrength);
-
 
       treeparticle.render();
 
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     //Render to Screen
 
@@ -316,7 +264,6 @@ int main( int argc, char* args[] ) {
     effect.use();                             //Prepare Shader
     effect.texture("imageTexture", image.texture);
     effect.texture("depthTexture", image.depth);
-    effect.texture("heightTexture", heightimage.texture);
     effect.texture("occlusionTexture", ssaotex);
     flat.render();                            //Render Image
 
