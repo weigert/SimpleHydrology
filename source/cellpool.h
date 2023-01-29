@@ -263,6 +263,19 @@ void indexnode(Vertexpool<Vertex>& vertexpool, quad::node& t){
     vertexpool.indices.push_back(math::flatten(pos + ivec2(1, 1), tileres/lodsize));
   }
 
+  // Side-Drapes
+
+  /*
+  for(size_t i = 0; i < tilesize/lodsize - 1; i++){
+    vertexpool.indices.push_back(i);
+    vertexpool.indices.push_back(tilesize + i);
+    vertexpool.indices.push_back(tilesize + i + 1);
+    vertexpool.indices.push_back(i+1);
+    vertexpool.indices.push_back(tilesize + i + 1);
+    vertexpool.indices.push_back(tilesize + i);
+  }
+  */
+
   // Update the Vertexpool Properties
   vertexpool.resize(t.vertex, vertexpool.indices.size());
   vertexpool.index();
@@ -290,6 +303,16 @@ void updatenode(Vertexpool<Vertex>& vertexpool, quad::node& t){
     );
 
   }
+  
+  /*
+  for(size_t i = 0; i < tilesize/lodsize; i++){
+    vertexpool.fill(t.vertex, tilesize + i,
+      glm::vec3(0, -10, i),
+      glm::vec3(1, 0, 0),
+      glm::vec3(0, 1, 0),
+      glm::vec3(0, 0, 1)
+    );
+  }*/
 
 }
 
