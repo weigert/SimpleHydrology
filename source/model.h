@@ -8,8 +8,8 @@ Defines our rendering parameters,
 and general visualization stuff.
 */
 
-const int WIDTH = 1920;
-const int HEIGHT = 1080;
+const int WIDTH = 1200;
+const int HEIGHT = 800;
 
 bool paused = true;
 bool viewmap = false;

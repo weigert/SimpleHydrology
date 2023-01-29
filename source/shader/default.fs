@@ -47,13 +47,15 @@ float gridSample(const int size){
 
 float shade(){
 
-    float shadow = 0.0;
-		const int size = 1;
+  float shadow = 0.0;
+	const int size = 1;
 
-    if(greaterThanEqual(ex_Shadow.xy, vec2(0.0f)) == bvec2(true) && lessThanEqual(ex_Shadow.xy, vec2(1.0f)) == bvec2(true))
-      shadow = gridSample(size);
+  if(greaterThanEqual(ex_Shadow.xy, vec2(0.0f)) == bvec2(true) && lessThanEqual(ex_Shadow.xy, vec2(1.0f)) == bvec2(true))
+    shadow = gridSample(size);
 
-		return shadow;
+
+	return shadow;
+
 }
 
 
@@ -98,19 +100,12 @@ void main() {
 
    vec3 normal = ex_Normal;
 
-
+   /*
    vec3 texnormal = texture(normalMap, mod(ex_Surface, vec2(16))/16).xyz;
    texnormal = TBN*normalize(texnormal * 2.0 - 1.0);
    normal = mix(normal, texnormal, steepness);
-
+   */
 
    fragColor = vec4(blinnphong(normal)*fragColor.xyz, 1.0);
-  // fragColor = vec4(blinnphong(ex_Normal)*fragColor.xyz, 1.0);
-
-//   fragColor = vec4(ex_Normal, 1);
-
-   // fragColor = ;
-
-
 
 }

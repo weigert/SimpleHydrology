@@ -6,6 +6,7 @@ out vec4 fragColor;
 uniform sampler2D imageTexture;
 uniform sampler2D depthTexture;
 uniform sampler2D heightTexture;
+uniform sampler2D occlusionTexture;
 
 uniform bool distancefog;
 uniform vec3 skycolor;
@@ -13,7 +14,7 @@ uniform vec3 skycolor;
 void main(){
 
 //  fragColor = vec4(vec3(texture(occlusionTexture, ex_Tex).r), 1);
-    fragColor = vec4(vec3(texture(imageTexture, ex_Tex).rgb), 1);
+    fragColor = vec4(vec3(texture(occlusionTexture, ex_Tex).r), 1);
   //  fragColor
 
     /*
