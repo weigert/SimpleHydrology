@@ -16,6 +16,7 @@ out vec4 fragColor;
 uniform vec3 lightCol;
 uniform vec3 lightPos;
 uniform vec3 lookDir;
+uniform vec3 skyCol;
 uniform float lightStrength;
 
 uniform mat4 view;
@@ -36,7 +37,7 @@ float gridSample(const int size){
 
   //Compute Bias
   float m = 1-dot(ex_Normal, normalize(lightPos));
-  float bias = mix(0.002, 0.2*m, pow(m, 5));
+  float bias = 0.0f;//mix(0.002, 0.2*m, pow(m, 5));
 
   for(int x = -size; x <= size; ++x){
       for(int y = -size; y <= size; ++y){
@@ -70,8 +71,8 @@ vec3 blinnphong(){
   // Diffuse (Factor)
 
   vec3 lightpos = (view*vec4(lightPos, 1)).xyz;
-  vec3 lightDir = normalize(lightpos - ex_Position.xyz);
-  float diffuse  = 0.7*clamp(dot(ex_Normal, lightDir), 0.1, 0.9);
+  vec3 lightDir = normalize(lightpos);
+  float diffuse  = 0.9*clamp(dot(ex_Normal, lightDir), 0.1, 0.9);
 
   // Specular Lighting (Factor)
 
@@ -100,6 +101,7 @@ void main() {
 
   // Transform to Viewspace
 
+//  fragColor = texture(shadowMap, ex_Tex);
   fragColor = texture(gColor, ex_Tex);
   fragColor = vec4(blinnphong()*fragColor.xyz, 1.0);
 
@@ -108,5 +110,6 @@ void main() {
   float depthVal = clamp(texture(gDepth, ex_Tex).r, 0.0, 1.0);
   if(depthVal < 1)
     fragColor = mix(fragColor, vec4(1.0), 0.4*pow(depthVal, 2));
+  else fragColor = vec4(skyCol, 1);
 
 }

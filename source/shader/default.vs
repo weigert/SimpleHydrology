@@ -27,7 +27,8 @@ void main() {
     const vec4 steepColor = vec4(vec3(0.7), 1);
 
     float steepness = 1.0f-pow(clamp((in_Normal.y-0.4)/0.6, 0.0, 1.0), 2);
-    float discharge = texture(dischargeMap, in_Position.xz/512).a;
+    const ivec2 size = textureSize(dischargeMap, 0);
+    float discharge = texture(dischargeMap, in_Position.xz/size).a;
 
     ex_Color = mix(flatColor, steepColor, steepness);
     ex_Color = mix(ex_Color, waterColor, discharge);

@@ -2,9 +2,9 @@
 #include <TinyEngine/camera>
 #include <TinyEngine/image>
 
-#include "source/model.h"
 #include "source/vertexpool.h"
 #include "source/world.h"
+#include "source/model.h"
 
 #include <random>
 
@@ -68,7 +68,7 @@ int main( int argc, char* args[] ) {
 
   Billboard image(WIDTH, HEIGHT);             //1200x800, color and depth
 
-  Texture shadowmap(8000, 8000, {GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT, GL_UNSIGNED_BYTE});
+  Texture shadowmap(8000, 8000, {GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT, GL_FLOAT});
   Target shadow(8000, 8000);
   shadow.bind(shadowmap, GL_DEPTH_ATTACHMENT);
 
@@ -233,6 +233,7 @@ int main( int argc, char* args[] ) {
     imageshader.uniform("view", cam::view);
     imageshader.uniform("dbvp", dbvp);
     imageshader.uniform("lightCol", lightCol);
+    imageshader.uniform("skyCol", skyCol);
     imageshader.uniform("lightPos", lightPos);
     imageshader.uniform("lookDir", cam::pos);
     imageshader.uniform("lightStrength", lightStrength);
