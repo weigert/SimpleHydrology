@@ -15,6 +15,7 @@ int main( int argc, char* args[] ) {
 
   Tiny::view.vsync = false;
   Tiny::window("Simple Hydrology", WIDTH, HEIGHT);
+  glDisable(GL_CULL_FACE);
 
   //Initialize the World
 
@@ -56,9 +57,6 @@ int main( int argc, char* args[] ) {
 
   Shader defaultshader({"source/shader/default.vs", "source/shader/default.fs"}, {"in_Position", "in_Normal", "in_Tangent", "in_Bitangent"});
   Shader defaultdepth({"source/shader/depth.vs", "source/shader/depth.fs"}, {"in_Position"});
-
-  Shader spriteshader({"source/shader/sprite.vs", "source/shader/sprite.fs"}, {"in_Quad", "in_Tex", "in_Model"});
-  Shader spritedepth({"source/shader/spritedepth.vs", "source/shader/spritedepth.fs"}, {"in_Quad", "in_Tex", "in_Model"});
 
   Shader treeshader({"source/shader/tree.vs", "source/shader/tree.fs"}, {"in_Pos", "in_Model"});
   Shader treedepth({"source/shader/treedepth.vs", "source/shader/treedepth.fs"}, {"in_Pos", "in_Model"});
@@ -201,6 +199,7 @@ int main( int argc, char* args[] ) {
     ImGui::ColorEdit3("Sky Color", &skyCol[0]);
     ImGui::ColorEdit3("Tree Color", &treeColor[0]);
     ImGui::DragFloat("lightStrength", &lightStrength);
+    ImGui::DragFloat("ssaoradius", &ssaoradius);
     if(ImGui::DragFloat3("lightPos", &lightPos[0])){
 
       dv = glm::lookAt(worldcenter + normalize(vec3(lightPos.x, lightPos.y, lightPos.z)), worldcenter, glm::vec3(0,1,0));
@@ -226,6 +225,7 @@ int main( int argc, char* args[] ) {
     defaultshader.uniform("proj", cam::proj);
     defaultshader.uniform("view", cam::view);
     defaultshader.texture("dischargeMap", dischargeMap);
+    defaultshader.texture("normalMap", normalMap);
     defaultshader.uniform("flatColor", flatColor);
     defaultshader.uniform("waterColor", waterColor);
     defaultshader.uniform("steepColor", steepColor);
@@ -253,6 +253,7 @@ int main( int argc, char* args[] ) {
     ssaoshader.texture("gPosition", gPosition);
     ssaoshader.texture("gNormal", gNormal);
     ssaoshader.texture("texNoise", noisetex);
+    ssaoshader.uniform("radius", ssaoradius);
     flat.render();
 
     //Render Shadowmap
@@ -296,7 +297,7 @@ int main( int argc, char* args[] ) {
     if(viewmap){
 
       mapshader.use();
-      mapshader.texture("momentumMap", shadowmap);
+      mapshader.texture("momentumMap", momentumMap);
       mapshader.texture("dischargeMap", dischargeMap);
       mapshader.uniform("model", mapmodel);
       mapshader.uniform("view", viewmomentum);
@@ -336,8 +337,8 @@ int main( int argc, char* args[] ) {
 
     dischargeMap.raw(image::make([&](const ivec2 p){
       double d = World::map.discharge(p);
-      if(World::map.height(p) < 0.1)
-        d = 1.0;
+  //    if(World::map.height(p) < 0.3)
+  //      d = 1.0;
       return vec4(waterColor, d);
     }, quad::res));
 

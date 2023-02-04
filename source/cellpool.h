@@ -388,19 +388,24 @@ struct map {
       max = (max > cell.height)?max:cell.height;
     }
 
+    noise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
+    noise.SetFractalType(FastNoiseLite::FractalType_FBm);
+    noise.SetFractalOctaves(1.0f);
+    noise.SetFractalLacunarity(2.0f);
+    noise.SetFractalGain(0.6f);
+    noise.SetFrequency(1.0);
+
     for(auto& node: nodes)
     for(auto [cell, pos]: node.s){
 
-      /*
-      // Gaussian
-      vec2 cp = node.pos + lodsize*pos - res/2;
-      float d = exp(-dot(cp, cp)/(0.07*size*size));
-      */
-      vec2 cp = node.pos + lodsize*pos - res/2;
-      float cd = sqrt(dot(cp, cp)/(0.07*size*size));
-      float d = 1.0;//0.5f*(1.0f+erf(10.0*(1.0f-cd)));
-      cell.height = d*((cell.height - min)/(max - min));
+      vec2 p = vec2(node.pos+lodsize*pos)/vec2(quad::tileres);
+    //  vec2 cp = p+;
+      float scale = noise.GetNoise(p.x, p.y, (float)(SEED%10000+1));
+      float d = 0.1+0.5f*(1.0f+erf(2*scale));
 
+    // /  float cd = sqrt(dot(cp, cp)/(0.07*size*size));
+      //cell.height = d;
+      cell.height = ((cell.height - min)/(max - min));
     }
 
   }

@@ -90,7 +90,7 @@ bool Drop::descend(){
 
   // Gravity Force
 
-  if(cell->height > 0.1){
+  //if(cell->height > 0.0){
 
     speed += quad::lodsize*gravity*vec2(n.x, n.z)/volume;
 
@@ -98,7 +98,7 @@ bool Drop::descend(){
     if(length(fspeed) > 0 && length(speed) > 0)
       speed += quad::lodsize*momentumTransfer*dot(normalize(fspeed), normalize(speed))/(volume + cell->discharge)*fspeed;
 
-  }
+  //}
 
   // Momentum Transfer Force
 
@@ -141,8 +141,8 @@ bool Drop::descend(){
     return false;
   }
 
-  /*
-  if(World.height(pos) < 0.1){
+/*
+  if(World::map.height(pos) < 0.3){
     volume = 0.0;
     return false;
   }

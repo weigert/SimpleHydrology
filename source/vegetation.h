@@ -65,6 +65,7 @@ void Plant::grow(){
 bool Plant::die(){
 
   if( World::map.discharge(pos) >= Plant::maxDischarge ) return true;
+  if( World::map.height(pos) <= 0.3) return true;
   if( rand()%1000 == 0 ) return true;
   return false;
 
@@ -75,6 +76,7 @@ bool Plant::spawn( vec2 pos ){
   if( World::map.discharge(pos) >= Plant::maxDischarge ) return false;
   glm::vec3 n = World::map.normal(pos);
   if( n.y < Plant::maxSteep ) return false;
+  if( World::map.height(pos) <= 0.3) return false;
 
   return true;
 

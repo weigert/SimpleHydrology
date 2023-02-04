@@ -5,6 +5,7 @@ layout (location = 2) in vec3 in_Tangent;
 layout (location = 3) in vec3 in_Bitangent;
 
 uniform sampler2D dischargeMap;
+uniform sampler2D normalMap;
 
 out vec3 ex_Position;
 out vec3 ex_Normal;
@@ -20,9 +21,28 @@ uniform vec3 steepColor;
 
 void main() {
 
-    const vec4 v_Position = view * model * vec4(in_Position, 1.0);
+    vec3 pos = in_Position;
+  //  if(in_Position.y < 24)
+  //    pos.y = 24;
+
+    vec4 v_Position = view * model * vec4(pos, 1.0);
     ex_Position = v_Position.xyz;
-    ex_Normal = transpose(inverse(mat3(view * model))) * in_Normal;
+
+    /*
+    vec3 T = normalize(vec3(model * vec4(in_Tangent,   0.0)));
+    vec3 B = normalize(vec3(model * vec4(in_Bitangent, 0.0)));
+    vec3 N = normalize(vec3(model * vec4(in_Normal,    0.0)));
+    mat3 TBN = transpose(mat3(T, B, N));
+    vec3 normal = texture(normalMap, vec2(ivec2(in_Position.xz)%ivec2(1))/1).rgb;
+    normal = normalize(normal * 2.0 - 1.0);
+    ex_Normal = normalize(TBN*normal);
+    */
+    ex_Normal = in_Normal;
+    //if(in_Position.y < 24)
+    //  ex_Normal = vec3(0,1,0);
+
+    ex_Normal = transpose(inverse(mat3(view * model))) * ex_Normal;
+
     gl_Position = proj * v_Position;
 
     // Color-Computation
@@ -37,5 +57,7 @@ void main() {
       ex_Color = steepColor;
     }
     ex_Color = mix(ex_Color, waterColor, discharge);
+    //if(in_Position.y < 24)
+    //  ex_Color = waterColor;
 
 }

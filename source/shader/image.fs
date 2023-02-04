@@ -42,6 +42,9 @@ float gridSample(const int size){
   for(int x = -size; x <= size; ++x){
       for(int y = -size; y <= size; ++y){
           float pcfDepth = texture(shadowMap, ex_Shadow.xy + vec2(x, y) / textureSize(shadowMap, 0)).r;
+          if(pcfDepth == 1)
+            return 0;
+
           shadow += currentDepth - 0.001 > pcfDepth ? 1.0 : 0.0;
       }
   }
@@ -66,17 +69,19 @@ float shade(){
 vec3 blinnphong(){
 
   // Ambient (Factor)
-  float ambient = 0.5;
+  float ambient = 0.6;
 
   // Diffuse (Factor)
 
   vec3 lightDir = normalize(transpose(inverse(mat3(view)))*lightPos);
-  float diffuse  = 1.1*clamp(dot(ex_Normal, lightDir), 0.1, 0.9);
+  float diffuse  = 1.0*clamp(dot(ex_Normal, lightDir), 0.1, 0.9);
 
   // Specular Lighting (Factor)
 
   float discharge = texture(dischargeMap, ex_WorldPos.xz/512).a;
   float specularStrength = 0.05 + 0.55*discharge;
+//  if(ex_WorldPos.y <= 25)
+//    specularStrength = 0.6;
 
   vec3 halfwayDir = normalize(lightDir + vec3(0,0,1));
   float spec = pow(max(dot(ex_Normal, halfwayDir), 0.0), 64);
@@ -116,12 +121,10 @@ void main() {
   float depthVal = clamp(texture(gDepth, ex_Tex).r, 0.0, 1.0);
   if(depthVal == 1) fragColor = vec4(skyCol, 1);
 
-  else fragColor = mix(fragColor, vec4(skyCol, 1.0), 0.4*pow(depthVal, 2));
-/*
-  else{
-    fragColor = mix(vec4(skyCol, 1), vec4(0,0,0,1), 0.0);//-ex_Tex.y);
-  }
-  */
+  depthVal = exp(-0.4*depthVal);
+  fragColor = mix(fragColor, vec4(skyCol, 1.0), 1.0-depthVal);
+
+
 
 //  fragColor = texture(gNormal, ex_Tex);
 

@@ -12,7 +12,7 @@ out vec4 fragColor;
 void main(){
 
   fragColor = vec4(0,0,0,1);
-  if(view){
+  if(!view){
     vec4 mapColor = texture(dischargeMap, ex_Tex);
     fragColor = mix(fragColor, mapColor, mapColor.a);
     fragColor.a = 1.0;
