@@ -31,7 +31,11 @@ void main() {
     const ivec2 size = textureSize(dischargeMap, 0);
     float discharge = texture(dischargeMap, in_Position.xz/size).a;
 
-    ex_Color = mix(flatColor, steepColor, steepness);
+    ex_Color = flatColor;
+    ex_Color = mix(flatColor, steepColor, steepness*steepness);
+    if(steepness > 0.6){
+      ex_Color = steepColor;
+    }
     ex_Color = mix(ex_Color, waterColor, discharge);
 
 }

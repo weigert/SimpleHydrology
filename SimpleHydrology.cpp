@@ -43,11 +43,11 @@ int main( int argc, char* args[] ) {
 
   // Camera
 
-  cam::near = -300.0f;
-  cam::far = 300.0f;
+  cam::near = -800.0f;
+  cam::far = 800.0f;
   cam::moverate = 10.0f;
   cam::look = glm::vec3(quad::size/2, quad::mapscale/2, quad::size/2);
-  cam::roty = 45.0f;
+  cam::roty = 60.0f;
   cam::rot = 180.0f;
   cam::init(3, cam::ORTHO);
   cam::update();
@@ -59,6 +59,9 @@ int main( int argc, char* args[] ) {
 
   Shader spriteshader({"source/shader/sprite.vs", "source/shader/sprite.fs"}, {"in_Quad", "in_Tex", "in_Model"});
   Shader spritedepth({"source/shader/spritedepth.vs", "source/shader/spritedepth.fs"}, {"in_Quad", "in_Tex", "in_Model"});
+
+  Shader treeshader({"source/shader/tree.vs", "source/shader/tree.fs"}, {"in_Pos", "in_Model"});
+  Shader treedepth({"source/shader/treedepth.vs", "source/shader/treedepth.fs"}, {"in_Pos", "in_Model"});
 
   Shader ssaoshader({"source/shader/ssao.vs", "source/shader/ssao.fs"}, {"in_Quad", "in_Tex"});
   Shader imageshader({"source/shader/image.vs", "source/shader/image.fs"}, {"in_Quad", "in_Tex"});
@@ -121,16 +124,41 @@ int main( int argc, char* args[] ) {
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
+
+
+  // Lets try an alternative tree model:
+  //  a cone! Is visible from the top.
+
+  Model conemodel({"in_Pos", "in_Normal"});
+  std::vector<glm::vec4> conepos;
+  std::vector<glm::vec3> conenormal;
+
+  for(int i = 0; i < 16; i++){
+
+    float phiA = 2.0f*3.14159265f*(float)i/15.0f;
+    float phiB = 2.0f*3.14159265f*(float)(i+1)/15.0f;
+
+    conepos.push_back(vec4(sin(phiA), -1, cos(phiA), 1));
+    conepos.push_back(vec4(sin(phiB), -1, cos(phiB), 1));
+    conepos.push_back(vec4(0, 1, 0, 1));
+
+    conenormal.push_back(vec3(sin(phiA), 0.25, cos(phiA)));
+    conenormal.push_back(vec3(sin(phiB), 0.25, cos(phiB)));
+    conenormal.push_back(vec3(sin(0.5f*(phiA + phiB)), 0.25, cos(0.5f*(phiA + phiB))));
+
+  }
+
+  Buffer coneposbuf(conepos);
+  Buffer conenormalbuf(conenormal);
+  conemodel.bind<vec4>("in_Pos", &coneposbuf);
+  conemodel.bind<vec3>("in_Normal", &conenormalbuf);
+  conemodel.SIZE = 16*3;
+
   //Trees as a Particle System
 
-  Square3D treemodel;									//Model we want to instance render!
-  Instance treeparticle(&treemodel);	//Particle system based on this model
-
-  Texture tree(image::load("resource/Tree.png"));
-  Texture treenormal(image::load("resource/TreeNormal.png"));
-
-	Buffer modelbuf;
-	treeparticle.bind<glm::mat4>("in_Model", &modelbuf);			//Update treeparticle system
+  Instance treeparticle(&conemodel);	//Particle system based on this model
+  Buffer modelbuf;
+  treeparticle.bind<glm::mat4>("in_Model", &modelbuf);			//Update treeparticle system
   std::vector<glm::mat4> treemodels;
 
   //Texture for Hydrological Map Visualization
@@ -171,21 +199,17 @@ int main( int argc, char* args[] ) {
     ImGui::ColorEdit3("Steep Color", &steepColor[0]);
     ImGui::ColorEdit3("Water Color", &waterColor[0]);
     ImGui::ColorEdit3("Sky Color", &skyCol[0]);
+    ImGui::ColorEdit3("Tree Color", &treeColor[0]);
     ImGui::DragFloat("lightStrength", &lightStrength);
     if(ImGui::DragFloat3("lightPos", &lightPos[0])){
 
-      //Matrix for Making Stuff Face Towards Light (Trees)
-      rot = -1.0f * acos(glm::dot(glm::vec3(1, 0, 0), glm::normalize(glm::vec3(lightPos.x, 0, lightPos.z))));
-      faceLight = glm::rotate(glm::mat4(1.0), rot , glm::vec3(0.0, 1.0, 0.0));
-
-      dp = glm::ortho<float>(-400, 400, -400, 400, 0, 800);
-      dv = glm::lookAt(worldcenter + lightPos, worldcenter, glm::vec3(0,1,0));
+      dv = glm::lookAt(worldcenter + normalize(vec3(lightPos.x, lightPos.y, lightPos.z)), worldcenter, glm::vec3(0,1,0));
       bias = glm::mat4(
           0.5, 0.0, 0.0, 0.0,
           0.0, 0.5, 0.0, 0.0,
           0.0, 0.0, 0.5, 0.0,
           0.5, 0.5, 0.5, 1.0
-      );
+    );
       dvp = dp*dv;
       dbvp = bias*dvp;
 
@@ -211,12 +235,11 @@ int main( int argc, char* args[] ) {
 
       glm::mat4 orient = glm::rotate(glm::mat4(1.0f), glm::radians(180.0f-cam::rot), glm::vec3(0.0, 1.0, 0.0));
 
-      spriteshader.use();
-      spriteshader.uniform("proj", cam::proj);
-      spriteshader.uniform("view", cam::view);
-      spriteshader.uniform("om", orient);
-      spriteshader.texture("spriteTexture", tree);
-      treeparticle.render();
+      treeshader.use();
+      treeshader.uniform("proj", cam::proj);
+      treeshader.uniform("view", cam::view);
+      treeshader.uniform("color", treeColor);
+      treeparticle.render(GL_TRIANGLES);
 
     }
 
@@ -242,11 +265,9 @@ int main( int argc, char* args[] ) {
     if(!Vegetation::plants.empty()){
 
       //Render the Trees as a Particle System
-      spritedepth.use();
-      spritedepth.texture("spriteTexture", tree);
-      spritedepth.uniform("om", faceLight);
-      spritedepth.uniform("dvp", dvp);
-      treeparticle.render();
+      treedepth.use();
+      treedepth.uniform("dvp", dvp);
+      treeparticle.render(GL_TRIANGLES);
 
     }
 
@@ -275,7 +296,7 @@ int main( int argc, char* args[] ) {
     if(viewmap){
 
       mapshader.use();
-      mapshader.texture("momentumMap", momentumMap);
+      mapshader.texture("momentumMap", shadowmap);
       mapshader.texture("dischargeMap", dischargeMap);
       mapshader.uniform("model", mapmodel);
       mapshader.uniform("view", viewmomentum);

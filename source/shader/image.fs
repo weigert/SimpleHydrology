@@ -66,19 +66,17 @@ float shade(){
 vec3 blinnphong(){
 
   // Ambient (Factor)
-  float ambient = 0.7;
+  float ambient = 0.5;
 
   // Diffuse (Factor)
 
-  vec3 lightpos = (view*vec4(lightPos, 1)).xyz;
-  vec3 lightDir = normalize(lightpos);
-  float diffuse  = 0.9*clamp(dot(ex_Normal, lightDir), 0.1, 0.9);
+  vec3 lightDir = normalize(transpose(inverse(mat3(view)))*lightPos);
+  float diffuse  = 1.1*clamp(dot(ex_Normal, lightDir), 0.1, 0.9);
 
   // Specular Lighting (Factor)
 
-  float ambientOcclusion = texture(ssaoTex, ex_Tex).r;
   float discharge = texture(dischargeMap, ex_WorldPos.xz/512).a;
-  float specularStrength = 0.05 + 0.85*discharge;
+  float specularStrength = 0.05 + 0.55*discharge;
 
   vec3 halfwayDir = normalize(lightDir + vec3(0,0,1));
   float spec = pow(max(dot(ex_Normal, halfwayDir), 0.0), 64);
@@ -86,7 +84,14 @@ vec3 blinnphong(){
 
   // Multiply by Lightcolor
 
-  return lightStrength*(ambientOcclusion*ambient + (1.0 - shade())*(diffuse + ambientOcclusion*specular))*lightCol;
+  float ao = texture(ssaoTex, ex_Tex).r;
+  float shadow = 1.0f-shade();
+
+  diffuse *= shadow;
+  specular *= shadow;
+  ambient *= ao;
+
+  return lightStrength*(ambient + (diffuse + specular))*lightCol;
 
 }
 
@@ -95,7 +100,7 @@ void main() {
   // Extract Base Values
 
   ex_Position = texture(gPosition, ex_Tex).xyz;
-  ex_Normal = texture(gNormal, ex_Tex).xyz;
+  ex_Normal = texture(gNormal, vec2(ex_Tex)).xyz;
   ex_WorldPos = inverse(view) *  vec4(ex_Position, 1.0f);
   ex_Shadow =  dbvp * ex_WorldPos;
 
@@ -107,13 +112,18 @@ void main() {
 
   // Depth-Fog
 
+
   float depthVal = clamp(texture(gDepth, ex_Tex).r, 0.0, 1.0);
   if(depthVal == 1) fragColor = vec4(skyCol, 1);
-  /*
-    fragColor = mix(fragColor, vec4(1.0), 0.4*pow(depthVal, 2));
+
+  else fragColor = mix(fragColor, vec4(skyCol, 1.0), 0.4*pow(depthVal, 2));
+/*
   else{
     fragColor = mix(vec4(skyCol, 1), vec4(0,0,0,1), 0.0);//-ex_Tex.y);
   }
   */
+
+//  fragColor = texture(gNormal, ex_Tex);
+
 
 }

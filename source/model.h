@@ -17,26 +17,23 @@ bool viewmomentum = false;
 
 //Coloring
 float steepness = 0.8;
-glm::vec3 flatColor = glm::vec3(0.40, 0.60, 0.25);
-glm::vec3 waterColor = glm::vec3(0.17, 0.40, 0.44);
-glm::vec3 steepColor = glm::vec3(0.7);
+glm::vec3 flatColor = glm::vec3(50, 81, 33)/255.0f;
+glm::vec3 steepColor = glm::vec3(115, 115, 95)/255.0f;
+glm::vec3 waterColor = glm::vec3(92, 133, 142)/255.0f;
+glm::vec3 skyCol = glm::vec3(173, 183, 196)/255.0f;
+glm::vec3 treeColor = glm::vec3(70, 90, 50)/255.0f;
+
+//Lighting and Shading
+glm::vec3 lightPos = normalize(glm::vec3(50.0f, 25.0f, -50.0f));
+glm::vec3 lightCol = glm::vec3(1.0f, 0.95f, 0.95f);
+float lightStrength = 1.4;
 
 //Depth Map Rendering
 
 glm::vec3 worldcenter = glm::vec3(quad::res.x/2, quad::mapscale/2, quad::res.y/2);
 
-//Lighting and Shading
-glm::vec3 skyCol = glm::vec4(0.64, 0.75, 0.9, 1.0f);
-glm::vec3 lightPos = glm::vec3(-100.0f, 75.0f, -150.0f);
-//glm::vec3 lightCol = glm::vec3(1.0f, 1.0f, 0.9f);
-glm::vec3 lightCol = glm::vec3(1.0f, 0.95f, 0.95f);
-float lightStrength = 1.4;
-
 //Matrix for Making Stuff Face Towards Light (Trees)
-float rot = -1.0f * acos(glm::dot(glm::vec3(1, 0, 0), glm::normalize(glm::vec3(lightPos.x, 0, lightPos.z))));
-glm::mat4 faceLight = glm::rotate(glm::mat4(1.0), rot , glm::vec3(0.0, 1.0, 0.0));
-
-glm::mat4 dp = glm::ortho<float>(-400, 400, -400, 400, 0, 800);
+glm::mat4 dp = glm::ortho<float>(-400, 400, -400, 400, -400, 400);
 glm::mat4 dv = glm::lookAt(worldcenter + lightPos, worldcenter, glm::vec3(0,1,0));
 glm::mat4 bias = glm::mat4(
     0.5, 0.0, 0.0, 0.0,

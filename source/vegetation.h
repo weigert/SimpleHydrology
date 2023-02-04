@@ -34,10 +34,10 @@ struct Plant {
 
 };
 
-float Plant::maxSize = 1.0f;
+float Plant::maxSize = 1.5f;
 float Plant::growRate = 0.05f;
 float Plant::maxSteep = 0.8f;
-float Plant::maxDischarge = 0.2f;
+float Plant::maxDischarge = 0.3f;
 
 // Vegetation Struct (Plant Container)
 
@@ -153,7 +153,7 @@ bool Vegetation::grow(){
 
     // Check for Growth
 
-    if(rand()%50 != 0)
+    if(rand()%20 != 0)
       continue;
 
     //Find New Position
