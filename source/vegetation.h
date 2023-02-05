@@ -24,6 +24,7 @@ struct Plant {
   static float growRate;
   static float maxSteep;
   static float maxDischarge;
+  static float maxTreeHeight;
 
   // Update Functions
 
@@ -38,6 +39,7 @@ float Plant::maxSize = 1.5f;
 float Plant::growRate = 0.05f;
 float Plant::maxSteep = 0.8f;
 float Plant::maxDischarge = 0.3f;
+float Plant::maxTreeHeight = 0.8f;
 
 // Vegetation Struct (Plant Container)
 
@@ -65,7 +67,7 @@ void Plant::grow(){
 bool Plant::die(){
 
   if( World::map.discharge(pos) >= Plant::maxDischarge ) return true;
-  if( World::map.height(pos) <= 0.3) return true;
+  if( World::map.height(pos) >= Plant::maxTreeHeight) return true;
   if( rand()%1000 == 0 ) return true;
   return false;
 
@@ -76,7 +78,7 @@ bool Plant::spawn( vec2 pos ){
   if( World::map.discharge(pos) >= Plant::maxDischarge ) return false;
   glm::vec3 n = World::map.normal(pos);
   if( n.y < Plant::maxSteep ) return false;
-  if( World::map.height(pos) <= 0.3) return false;
+  if( World::map.height(pos) >= Plant::maxTreeHeight) return false;
 
   return true;
 

@@ -34,7 +34,8 @@ float lightStrength = 1.4;
 glm::vec3 worldcenter = glm::vec3(quad::res.x/2, quad::mapscale/2, quad::res.y/2);
 
 //Matrix for Making Stuff Face Towards Light (Trees)
-glm::mat4 dp = glm::ortho<float>(-400, 400, -400, 400, -400, 400);
+float ds = quad::mapsize*400;
+glm::mat4 dp = glm::ortho<float>(-ds, ds, -ds, ds, -ds, ds);
 glm::mat4 dv = glm::lookAt(worldcenter + lightPos, worldcenter, glm::vec3(0,1,0));
 glm::mat4 bias = glm::mat4(
     0.5, 0.0, 0.0, 0.0,
