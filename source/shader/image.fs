@@ -121,8 +121,8 @@ void main() {
   float depthVal = clamp(texture(gDepth, ex_Tex).r, 0.0, 1.0);
   if(depthVal == 1) fragColor = vec4(skyCol, 1);
 
-  depthVal = exp(-0.4*depthVal);
-  fragColor = mix(fragColor, vec4(skyCol, 1.0), 1.0-depthVal);
+  //depthVal = exp(-0.4*depthVal);
+  //fragColor = mix(fragColor, vec4(skyCol, 1.0), 1.0-depthVal);
 
 
 
