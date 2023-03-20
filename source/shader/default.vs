@@ -1,79 +1,63 @@
 #version 430 core
+layout (location = 0) in vec3 in_Position;
+layout (location = 1) in vec3 in_Normal;
+layout (location = 2) in vec3 in_Tangent;
+layout (location = 3) in vec3 in_Bitangent;
 
-layout(location = 0) in vec3 in_Position;
-layout(location = 1) in vec3 in_Normal;
-layout(location = 2) in vec4 in_Color;
+uniform sampler2D dischargeMap;
+uniform sampler2D normalMap;
 
-//Lighting
-uniform vec3 lightCol;
-uniform vec3 lightPos;
-uniform vec3 lookDir;
-uniform float lightStrength;
+out vec3 ex_Position;
+out vec3 ex_Normal;
+out vec3 ex_Color;
 
-//Uniforms
-uniform mat4 vp;
-uniform mat4 dbvp;
+const mat4 model = mat4(1.0f);
+uniform mat4 view;
+uniform mat4 proj;
 
-uniform sampler2D shadowMap;
+uniform vec3 flatColor;
+uniform vec3 waterColor;
+uniform vec3 steepColor;
 
-// We output the ex_Color variable to the next shader in the chain
-flat out vec4 ex_Color;
-out vec4 ex_Shadow;
+void main() {
 
+    vec3 pos = in_Position;
+  //  if(in_Position.y < 24)
+  //    pos.y = 24;
 
+    vec4 v_Position = view * model * vec4(pos, 1.0);
+    ex_Position = v_Position.xyz;
 
-float gridSample(int size){
-  //Stuff
-  float shadow = 0.0;
-  float currentDepth = ex_Shadow.z;
+    /*
+    vec3 T = normalize(vec3(model * vec4(in_Tangent,   0.0)));
+    vec3 B = normalize(vec3(model * vec4(in_Bitangent, 0.0)));
+    vec3 N = normalize(vec3(model * vec4(in_Normal,    0.0)));
+    mat3 TBN = transpose(mat3(T, B, N));
+    vec3 normal = texture(normalMap, vec2(ivec2(in_Position.xz)%ivec2(1))/1).rgb;
+    normal = normalize(normal * 2.0 - 1.0);
+    ex_Normal = normalize(TBN*normal);
+    */
+    ex_Normal = in_Normal;
+    //if(in_Position.y < 24)
+    //  ex_Normal = vec3(0,1,0);
 
-  //Compute Bias
-  float m = 1-dot(in_Normal, normalize(lightPos));
-  float bias = mix(0.002, 0.2*m, pow(m, 5));
+    ex_Normal = transpose(inverse(mat3(view * model))) * ex_Normal;
 
-  for(int x = -size; x <= size; ++x){
-      for(int y = -size; y <= size; ++y){
-          float pcfDepth = texture(shadowMap, ex_Shadow.xy + vec2(x, y) / textureSize(shadowMap, 0)).r;
-          shadow += currentDepth - 0.001 > pcfDepth ? 1.0 : 0.0;
-      }
-  }
-  //Normalize
-  shadow/=12.0;
-  return shadow;
-}
+    gl_Position = proj * v_Position;
 
-float shade(){
+    // Color-Computation
 
-/*
-    float shadow = 0.0;
-		int size = 1;
+    float steepness = 1.0f-pow(clamp((in_Normal.y-0.4)/0.6, 0.0, 1.0), 2);
+    const ivec2 size = textureSize(dischargeMap, 0);
+    float discharge = texture(dischargeMap, in_Position.xz/size).a;
 
-    if(greaterThanEqual(ex_Shadow.xy, vec2(0.0f)) == bvec2(true) && lessThanEqual(ex_Shadow.xy, vec2(1.0f)) == bvec2(true))
-      shadow = gridSample(size);
-*/
-		return 0.0;//shadow;
-}
+    ex_Color = flatColor;
+    ex_Color = mix(flatColor, steepColor, steepness*steepness);
+    if(steepness > 0.6){
+      ex_Color = steepColor;
+    }
+    ex_Color = mix(ex_Color, waterColor, discharge);
+    //if(in_Position.y < 24)
+    //  ex_Color = waterColor;
 
-vec4 phong() {
-
-float diffuse = clamp(dot(in_Normal, normalize(lightPos)), 0.1, 0.9);
-float ambient = 0.3;
-float spec = 0.1*pow(max(dot(normalize(lookDir), normalize(reflect(lightPos, in_Normal))), 0.0), 32.0);
-
-return vec4(lightCol*lightStrength*((1.0f-0.9*shade())*(diffuse + spec) + ambient ), 1.0f);
-
-}
-
-void main(void) {
-
-  vec3 ex_Position = in_Position;
-  ex_Color = vec4((phong()*in_Color).xyz, 1.0f);
-
-  if(ex_Position.y < 8){
-    ex_Position.y = 8;
-    ex_Color = vec4(0.17, 0.40, 0.44,1);
-  }
-
-	ex_Shadow = dbvp * vec4(ex_Position, 1.0f);
-	gl_Position = vp * vec4(ex_Position, 1.0f);
 }

@@ -5,44 +5,52 @@ using namespace glm;
 
 struct Vertex {
 
-	Vertex(vec3 p, vec3 n, vec4 c){
+	Vertex(vec3 p, vec3 n, vec3 t, vec3 b){
 		position[0] = p.x;
 		position[1] = p.y;
 		position[2] = p.z;
 		normal[0] = n.x;
 		normal[1] = n.y;
 		normal[2] = n.z;
-		color[0] = c.x;
-		color[1] = c.y;
-		color[2] = c.z;
-		color[3] = c.w;
+		tangent[0] = t.x;
+		tangent[1] = t.y;
+		tangent[2] = t.z;
+		bitangent[0] = b.x;
+		bitangent[1] = b.y;
+		bitangent[2] = b.z;
 	}
 
 	float position[3];
 	float normal[3];
-	float color[4];
+	float tangent[3];
+	float bitangent[3];
 
   static void format(int vbo){
 
     glEnableVertexAttribArray(0);
-    glEnableVertexAttribArray(1);
-    glEnableVertexAttribArray(2);
+		glEnableVertexAttribArray(1);
+		glEnableVertexAttribArray(2);
+		glEnableVertexAttribArray(3);
 
     glVertexAttribFormat(0, 3, GL_FLOAT, GL_FALSE, 0);
-    glVertexAttribFormat(1, 3, GL_FLOAT, GL_FALSE, 0);
-    glVertexAttribFormat(2, 4, GL_FLOAT, GL_FALSE, 0);
+		glVertexAttribFormat(1, 3, GL_FLOAT, GL_FALSE, 0);
+		glVertexAttribFormat(2, 3, GL_FLOAT, GL_FALSE, 0);
+		glVertexAttribFormat(3, 3, GL_FLOAT, GL_FALSE, 0);
 
 		glVertexBindingDivisor(0, 0);
 		glVertexBindingDivisor(1, 0);
 		glVertexBindingDivisor(2, 0);
+		glVertexBindingDivisor(3, 0);
 
     glVertexAttribBinding(0, 0);
-    glVertexAttribBinding(1, 1);
-    glVertexAttribBinding(2, 2);
+		glVertexAttribBinding(1, 1);
+		glVertexAttribBinding(2, 2);
+		glVertexAttribBinding(3, 3);
 
     glBindVertexBuffer(0, vbo, offsetof(Vertex, position), sizeof(Vertex));		//Internal Offset vs. Full Offset
-    glBindVertexBuffer(1, vbo, offsetof(Vertex, normal), sizeof(Vertex));
-    glBindVertexBuffer(2, vbo, offsetof(Vertex, color), sizeof(Vertex));
+		glBindVertexBuffer(1, vbo, offsetof(Vertex, normal), sizeof(Vertex));
+		glBindVertexBuffer(2, vbo, offsetof(Vertex, tangent), sizeof(Vertex));
+		glBindVertexBuffer(3, vbo, offsetof(Vertex, bitangent), sizeof(Vertex));
 
   }
 

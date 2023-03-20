@@ -3,14 +3,15 @@ layout (location = 0) out vec3 gPosition;
 layout (location = 1) out vec3 gNormal;
 layout (location = 2) out vec4 gColor;
 
-in vec3 ex_Position;
+in vec4 ex_Position;
 in vec3 ex_Normal;
-in vec3 ex_Color;
 
-void main() {
+uniform vec3 color;
 
-    gPosition = ex_Position;
-    gNormal = normalize(ex_Normal);
-    gColor = vec4(ex_Color, 1);
+void main(){
+
+  gColor = vec4(color, 1);
+  gPosition = ex_Position.xyz;
+  gNormal = normalize(ex_Normal);
 
 }

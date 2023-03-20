@@ -215,6 +215,8 @@ struct cell {
   float momentumx_track;
   float momentumy_track;
 
+  float rootdensity;
+
 };
 
 struct node {
@@ -232,7 +234,9 @@ struct node {
   }
 
   const inline float height(ivec2 p){
-    return get(p)->height;
+    cell* c = get(p);
+    if(c == NULL) return 0.0f;
+    return c->height;
   }
 
   const inline float discharge(ivec2 p){
@@ -259,6 +263,19 @@ void indexnode(Vertexpool<Vertex>& vertexpool, quad::node& t){
     vertexpool.indices.push_back(math::flatten(pos + ivec2(1, 1), tileres/lodsize));
   }
 
+  // Side-Drapes
+
+  /*
+  for(size_t i = 0; i < tilesize/lodsize - 1; i++){
+    vertexpool.indices.push_back(i);
+    vertexpool.indices.push_back(tilesize + i);
+    vertexpool.indices.push_back(tilesize + i + 1);
+    vertexpool.indices.push_back(i+1);
+    vertexpool.indices.push_back(tilesize + i + 1);
+    vertexpool.indices.push_back(tilesize + i);
+  }
+  */
+
   // Update the Vertexpool Properties
   vertexpool.resize(t.vertex, vertexpool.indices.size());
   vertexpool.index();
@@ -270,24 +287,32 @@ void updatenode(Vertexpool<Vertex>& vertexpool, quad::node& t){
 
   for(auto [cell, pos]: t.s){
 
-    float height = quad::mapscale*t.height(t.pos + lodsize*pos);
+    glm::vec2 p = t.pos + lodsize*pos;
+    glm::vec2 pT = t.pos + lodsize*(pos + ivec2( 1, 0));
+    glm::vec2 pB = t.pos + lodsize*(pos + ivec2( 0, 1));
 
-    glm::vec3 color = flatColor;
-
-    glm::vec3 normal = t.normal(t.pos + lodsize*pos);
-    if(normal.y < steepness)
-      color = steepColor;
-
-    float discharge = t.discharge(t.pos + lodsize*pos);
-    color = glm::mix(color, waterColor, discharge);
+    glm::vec3 P = glm::vec3(p.x, quad::mapscale*t.height(p), p.y);
+    glm::vec3 T = glm::vec3(pT.x, quad::mapscale*t.height(pT), pT.y);
+    glm::vec3 B = glm::vec3(pB.x, quad::mapscale*t.height(pB), pB.y);
 
     vertexpool.fill(t.vertex, math::flatten(pos, tileres/lodsize),
-      glm::vec3(t.pos.x + lodsize*pos.x, height, t.pos.y + lodsize*pos.y),
-      normal,
-      vec4(color, 1.0f)
+      P,
+      t.normal(p),
+      T - P,
+      B - P
     );
 
   }
+
+  /*
+  for(size_t i = 0; i < tilesize/lodsize; i++){
+    vertexpool.fill(t.vertex, tilesize + i,
+      glm::vec3(0, -10, i),
+      glm::vec3(1, 0, 0),
+      glm::vec3(0, 1, 0),
+      glm::vec3(0, 0, 1)
+    );
+  }*/
 
 }
 
@@ -363,19 +388,24 @@ struct map {
       max = (max > cell.height)?max:cell.height;
     }
 
+    noise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
+    noise.SetFractalType(FastNoiseLite::FractalType_FBm);
+    noise.SetFractalOctaves(1.0f);
+    noise.SetFractalLacunarity(2.0f);
+    noise.SetFractalGain(0.6f);
+    noise.SetFrequency(1.0);
+
     for(auto& node: nodes)
     for(auto [cell, pos]: node.s){
 
-      /*
-      // Gaussian
-      vec2 cp = node.pos + lodsize*pos - res/2;
-      float d = exp(-dot(cp, cp)/(0.07*size*size));
-      */
-      vec2 cp = node.pos + lodsize*pos - res/2;
-      float cd = sqrt(dot(cp, cp)/(0.07*size*size));
-      float d = 1.0;//0.5f*(1.0f+erf(10.0*(1.0f-cd)));
-      cell.height = d*((cell.height - min)/(max - min));
+      vec2 p = vec2(node.pos+lodsize*pos)/vec2(quad::tileres);
+    //  vec2 cp = p+;
+      float scale = noise.GetNoise(p.x, p.y, (float)(SEED%10000+1));
+      float d = 0.1+0.5f*(1.0f+erf(2*scale));
 
+    // /  float cd = sqrt(dot(cp, cp)/(0.07*size*size));
+      //cell.height = d;
+      cell.height = ((cell.height - min)/(max - min));
     }
 
   }
@@ -393,6 +423,11 @@ struct map {
     p /= tileres;
     int ind = p.x*mapsize + p.y;
     return &nodes[ind];
+  }
+
+  inline cell* getCell(ivec2 p){
+    if(oob(p)) return NULL;
+    return get(p)->get(p);
   }
 
   const inline float height(ivec2 p){
