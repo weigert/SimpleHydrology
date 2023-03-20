@@ -13,6 +13,8 @@ Vertexpool<Vertex> vertexpool;
 
 int main( int argc, char* args[] ) {
 
+  assert(TINYENGINE_VERSION == "1.7");
+
   Tiny::view.vsync = false;
   Tiny::view.blend = false;
   Tiny::window("Simple Hydrology", WIDTH, HEIGHT);
