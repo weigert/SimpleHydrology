@@ -14,6 +14,7 @@ Vertexpool<Vertex> vertexpool;
 int main( int argc, char* args[] ) {
 
   Tiny::view.vsync = false;
+  Tiny::view.blend = false;
   Tiny::window("Simple Hydrology", WIDTH, HEIGHT);
   glDisable(GL_CULL_FACE);
 
