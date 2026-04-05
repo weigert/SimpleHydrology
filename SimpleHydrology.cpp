@@ -13,7 +13,7 @@ Vertexpool<Vertex> vertexpool;
 
 int main( int argc, char* args[] ) {
 
-  assert(TINYENGINE_VERSION == "1.7");
+  assert(strcmp(TINYENGINE_VERSION, "1.7") == 0);
 
   Tiny::view.vsync = false;
   Tiny::view.blend = false;
