@@ -1,4 +1,4 @@
-#version 430 core
+#version 410 core
 layout (location = 0) in vec3 in_Position;
 layout (location = 1) in vec3 in_Normal;
 layout (location = 2) in vec3 in_Tangent;
@@ -48,7 +48,7 @@ void main() {
     // Color-Computation
 
     float steepness = 1.0f-pow(clamp((in_Normal.y-0.4)/0.6, 0.0, 1.0), 2);
-    const ivec2 size = textureSize(dischargeMap, 0);
+    ivec2 size = textureSize(dischargeMap, 0);
     float discharge = texture(dischargeMap, in_Position.xz/size).a;
 
     ex_Color = flatColor;

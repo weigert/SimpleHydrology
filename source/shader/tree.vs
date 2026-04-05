@@ -1,4 +1,4 @@
-#version 430 core
+#version 410 core
 
 layout(location = 0) in vec4 in_Pos;
 layout(location = 1) in vec3 in_Normal;
@@ -12,7 +12,7 @@ out vec3 ex_Normal;
 
 void main(void) {
 
-	const vec4 v_Position = view * in_Model * in_Pos;
+	vec4 v_Position = view * in_Model * in_Pos;
 	ex_Position = v_Position;
 	ex_Normal = transpose(inverse(mat3(view * in_Model))) * normalize(in_Normal);
 	gl_Position = proj*v_Position;

@@ -5,6 +5,7 @@ using namespace glm;
 
 struct Vertex {
 
+	Vertex() = default;
 	Vertex(vec3 p, vec3 n, vec3 t, vec3 b){
 		position[0] = p.x;
 		position[1] = p.y;
@@ -32,6 +33,13 @@ struct Vertex {
 		glEnableVertexAttribArray(2);
 		glEnableVertexAttribArray(3);
 
+#ifdef TINYENGINE_OS_MAC
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, tangent));
+    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, bitangent));
+#else
     glVertexAttribFormat(0, 3, GL_FLOAT, GL_FALSE, 0);
 		glVertexAttribFormat(1, 3, GL_FLOAT, GL_FALSE, 0);
 		glVertexAttribFormat(2, 3, GL_FLOAT, GL_FALSE, 0);
@@ -51,6 +59,7 @@ struct Vertex {
 		glBindVertexBuffer(1, vbo, offsetof(Vertex, normal), sizeof(Vertex));
 		glBindVertexBuffer(2, vbo, offsetof(Vertex, tangent), sizeof(Vertex));
 		glBindVertexBuffer(3, vbo, offsetof(Vertex, bitangent), sizeof(Vertex));
+#endif
 
   }
 
@@ -128,8 +137,13 @@ Vertexpool(int k, int n):Vertexpool(){
 	for(size_t i = 0; i < indirect.size();)
 		unsection(indirect[i].index);
 
+#ifdef TINYENGINE_OS_MAC
+	delete[] start;
+	start = NULL;
+#else
 	glBindVertexArray(vao);
 	glUnmapBuffer(vbo);
+#endif
 	glDeleteBuffers(1, &vbo);
 	glDeleteBuffers(1, &ebo);
 	glDeleteBuffers(1, &indbo);
@@ -157,14 +171,21 @@ void reserve(const int k, const int n){
 	init();
 
 	K = k; N = n; M = 0;
+	MAXSIZE = N*K;
+
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+
+#ifdef TINYENGINE_OS_MAC
+	// CPU-side buffer with manual upload (no persistent mapping on macOS GL 4.1)
+	start = new T[MAXSIZE];
+	glBufferData(GL_ARRAY_BUFFER, MAXSIZE*sizeof(T), NULL, GL_DYNAMIC_DRAW);
+#else
   const GLbitfield flag = GL_MAP_WRITE_BIT |
 													GL_MAP_PERSISTENT_BIT |
 													GL_MAP_COHERENT_BIT;
-
-  glBindBuffer(GL_ARRAY_BUFFER, vbo);
   glBufferStorage(GL_ARRAY_BUFFER, N*K*sizeof(T), NULL, flag);
   start = (T*)glMapBufferRange( GL_ARRAY_BUFFER, 0, N*K*sizeof(T), flag );
-	MAXSIZE = N*K;
+#endif
 
 	for(int i = 0; i < N; i++)
 		free.push_front(start+i*K);
@@ -325,6 +346,13 @@ void update(){
 ================================================================================
 */
 
+#ifdef TINYENGINE_OS_MAC
+void upload(){
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, MAXSIZE*sizeof(T), start);
+}
+#endif
+
 void render(const GLenum mode = GL_TRIANGLES, size_t first = 0, size_t length = 0){
 
 	if(indirect.size() == 0)
@@ -336,9 +364,17 @@ void render(const GLenum mode = GL_TRIANGLES, size_t first = 0, size_t length = 
 
   glBindVertexArray(vao);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-  glBindBuffer(GL_DRAW_INDIRECT_BUFFER, indbo);
 
+#ifdef TINYENGINE_OS_MAC
+	upload();
+	for(size_t i = first; i < first + length; i++){
+		glDrawElementsBaseVertex(mode, indirect[i].cnt, GL_UNSIGNED_INT,
+			(void*)(indirect[i].start * sizeof(GLuint)), indirect[i].baseVert);
+	}
+#else
+  glBindBuffer(GL_DRAW_INDIRECT_BUFFER, indbo);
 	glMultiDrawElementsIndirect(mode, GL_UNSIGNED_INT, (void*)(first*(sizeof(DAIC))), length, sizeof(DAIC));
+#endif
 
 }
 
